@@ -1,10 +1,13 @@
+######################################
+# Environment Variables
+######################################
 export ADMIN_USER=""
+export SSH_PUBLIC_KEY=""
 
 export STORAGE_SERVER_FQDN=""
 export STORAGE_SERVER_HOSTNAME=""
 export STORAGE_SERVER_IP=""
 export STORAGE_SERVER_MAC=""
-export STORAGE_SERVER_BRMAC="leave-blank"
 
 export MANAGEMENT_SERVER_FQDN=""
 export MANAGEMENT_SERVER_HOSTNAME=""
