@@ -1,0 +1,68 @@
+- name: Create Virtual Machine
+  hosts: $STORAGE_SERVER_HOSTNAME
+  vars:
+    hostname: "{{ hostname }}"
+    admin_user: "{{ admin_user }}"
+    ssh_public_key_personal: "{{ ssh_public_key_personal }}"
+    ssh_public_key_mgmt: "{{ ssh_public_key_mgmt }}"
+    ip: "{{ ip }}"
+    mac: "{{ mac }}"
+    base_image_path: "/storage/vms/isos/jammy-server-cloudimg-amd64.img"
+    vm_storage_path: "/storage/vms/{{ hostname }}"
+
+  tasks:
+    - name: Create VM storage directory
+      file:
+        path: "{{ vm_storage_path }}"
+        state: directory
+        
+    - name: Generate meta-data.yaml
+      copy:
+        dest: "{{ vm_storage_path }}/meta-data.yaml"
+        content: |
+          instance-id: {{ hostname }}
+          local-hostname: {{ hostname }}
+
+    - name: Generate user-data.yaml
+      copy:
+        dest: "{{ vm_storage_path }}/user-data.yaml"
+        content: |
+          #cloud-config
+
+          users:
+            - name: {{ admin_user }}
+              sudo: ALL=(ALL) NOPASSWD:ALL
+              shell: /bin/bash
+              groups: sudo, wheel
+              ssh_authorized_keys:
+                - {{ ssh_public_key_personal }}
+                - {{ ssh_public_key_mgmt }}
+              lock_passwd: false
+
+    - name: Create VM base image
+      shell: qemu-img create -b {{ base_image_path }} -f qcow2 -F qcow2 {{ vm_storage_path }}/{{ hostname }}-base.img 40G
+
+    - name: Install VM using virt-install
+      become: yes
+      become_method: sudo
+      shell: |
+        virt-install \
+        --name {{ hostname }} \
+        --ram 4096 \
+        --vcpus 4 \
+        --import \
+        --disk path={{ vm_storage_path }}/{{ hostname }}-base.img,format=qcow2 \
+        --os-variant ubuntu22.04 \
+        --network bridge=br0,model=virtio,mac={{ mac }} \
+        --graphics vnc,listen=0.0.0.0 --noautoconsole \
+        --cloud-init user-data={{ vm_storage_path }}/user-data.yaml,meta-data={{ vm_storage_path }}/meta-data.yaml \
+        --debug
+
+    - name: Add VM to Ansible inventory file on control node
+      delegate_to: localhost
+      become: false
+      lineinfile:
+        path: /etc/ansible/hosts
+        insertafter: "[cluster]$"
+        line: "{{ hostname }} ansible_host={{ ip }}"
+        state: present
