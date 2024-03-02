@@ -12,21 +12,27 @@ echo "source ~/variables.sh" >> ~/.zshrc && source ~/.zshrc
 sudo mkdir -p /storage/vms/isos
 curl https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -o /storage/vms/isos/jammy-server-cloudimg-amd64.img
 
+sudo chown -R libvirt-qemu:kvm -R /storage/vms
+sudo usermod -aG kvm $ADMIN_USER
+sudo chmod 770 /storage/vms
+
+# logout and back in to apply group changes
+
 ######################################
 # Intall the Management VM
 ######################################
 
-sudo mkdir /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
+mkdir /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
 cd /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
 
-sudo tee meta-data.yaml <<EOF
+tee meta-data.yaml <<EOF
 instance-id: $MANAGEMENT_SERVER_HOSTNAME
 local-hostname: $MANAGEMENT_SERVER_HOSTNAME
 EOF
 
 export ADMIN_PASSWORD_HASH=$(echo $TEMP_ADMIN_PASSWORD | mkpasswd --method=SHA-512 --rounds=4096)
 
-sudo tee user-data.yaml <<EOF
+tee user-data.yaml <<EOF
 #cloud-config
 
 users:
@@ -53,6 +59,4 @@ sudo virt-install \
 --cloud-init user-data=user-data.yaml,meta-data=meta-data.yaml \
 --debug
 
-# you can connect to the management server using ssh
-# or with
-sudo virsh console $MANAGEMENT_SERVER_HOSTNAME
+# Now move on to ansible.sh

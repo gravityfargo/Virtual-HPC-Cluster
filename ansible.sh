@@ -23,7 +23,7 @@ sudo groupadd ansibleadmins
 sudo usermod -aG ansibleadmins $ADMIN_USER
 
 sudo chown root:ansibleadmins /etc/ansible
-sudo chmod 775 /etc/ansible
+sudo chmod 770 /etc/ansible
 sudo chmod 664 /etc/ansible/hosts
 
 # log user out and back in to apply group changes
