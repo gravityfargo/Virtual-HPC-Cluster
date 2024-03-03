@@ -1,11 +1,11 @@
 #!/bin/bash
 ######################################
-# Prepare the management server
+# Setup Packages
 ######################################
 sudo apt update -y && sudo apt upgrade -y
 sudo apt install -y zsh git curl wget whois
 
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/variables.sh
+
 
 echo "source ~/variables.sh" >> ~/.bashrc && source ~/.bashrc
 echo "source ~/variables.sh" >> ~/.zshrc && source ~/.zshrc
@@ -26,7 +26,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y ansible
 sudo mkdir -p /etc/ansible
 
-sudo groupadd ansibleadmins
+sudo groupadd -r ansibleadmins
 sudo usermod -aG ansibleadmins $ADMIN_USER
 
 sudo chown root:ansibleadmins /etc/ansible
@@ -82,11 +82,18 @@ ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$HEAD_SERVER_HOSTN
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$HEAD_SERVER_IP"
 
+# ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
+# -e "vm_host='$WORKER_SERVER_HOSTNAME'" \
+# -e "admin_user=$ADMIN_USER" -e "mac=$WORKER_SERVER_MAC" \
+# -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
+# -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
+# -e "ip=$WORKER_SERVER_IP"
+
 ######################################
 # Delete VMs
 ######################################
 
-# curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/delete-vm.yml -o ~/delete-vm.yml
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/delete-vm.yml -o ~/delete-vm.yml
 # ansible-playbook --ask-become-pass delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$LOGIN_SERVER_HOSTNAME"
 # ansible-playbook --ask-become-pass delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$HEAD_SERVER_HOSTNAME"
 
@@ -94,5 +101,12 @@ ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$HEAD_SERVER_HOSTN
 # Prepare the base OSes
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
-ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=all" -e "admin_user=$ADMIN_USER"
-echo "source ~/variables.sh" >> ~/.zshrc && source ~/.zshrc
+ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$HEAD_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+# ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+# ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+# ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+
+######################################
+# Prepare the hpc clients
+######################################
