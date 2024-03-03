@@ -3,11 +3,17 @@
   hosts: "{{ target_hostname }}"
   vars:
     admin_user: "{{ admin_user }}"
-  become: true
   tasks:
     ############################################################
     - name: Packages
+      become: true
       block:
+      
+        - name: Upgrade all packages
+          ansible.builtin.apt:
+            upgrade: dist
+            update_cache: yes
+      
         - name: Remove unwanted packages
           ansible.builtin.apt:
             name: "{{ item }}"
@@ -34,9 +40,11 @@
             - ufw
             - auditd
             - whois
+            - prometheus-node-exporter
 
     ############################################################
     - name: General Settings
+      become: true
       block:
         - name: Set timezone to America/New_York
           ansible.builtin.shell: timedatectl set-timezone America/New_York
@@ -47,23 +55,88 @@
         - name: Change the admin's default shell to Zsh
           ansible.builtin.shell: chsh -s $(which zsh) {{ admin_user }}
 
+        - name: Enable essential services
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            enabled: yes
+            state: started
+          loop:
+            - systemd-timesyncd
+            - prometheus-node-exporter
+            - auditd
+
+        - name: Disable unnecessary services
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            enabled: no
+            state: stopped
+          loop:
+            - motd-news
+
+        - name: Allow prometheus-node-exporter on 9100/tcp
+          ansible.builtin.ufw:
+            rule: allow
+            port: '9100'
+            proto: tcp
+            comment: "prometheus-node-exporter"
+
+        - name: Allow SSH on 22/tcp
+          ansible.builtin.ufw:
+            rule: allow
+            port: '22'
+            proto: tcp
+            comment: "SSH"
+        
+        - name: Allow NFS on 2049/tcp
+          ansible.builtin.ufw:
+            rule: allow
+            port: '2049'
+            proto: tcp
+            comment: "NFS"
+  
+        - name: Enable UFW
+          ansible.builtin.ufw:
+            state: enabled
+
     ############################################################
     - name: System Customizations
+      become: true
       block:
-        - name: Update MOTD
-          ansible.builtin.shell: "{{ item }}"
-          loop:
-          - sed -i '/session[ \t]\+optional[ \t]\+pam_mail.so/s/^/#/' /etc/pam.d/sshd
-          - sed -i 's/#PrintLastLog yes/PrintLastLog no/' /etc/ssh/sshd_config
-          - rm -rf /etc/update-motd.d/*
+        - name: Comment out pam_mail.so in sshd
+          ansible.builtin.lineinfile:
+            path: /etc/pam.d/sshd
+            regexp: '^(session[ \t]+optional[ \t]+pam_mail.so.*)$'
+            line: '#\1'
+            backrefs: yes
+
+        - name: Disable PrintLastLog in sshd_config
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: "^#?PrintLastLog yes"
+            line: "PrintLastLog no"
+
+        - name: Remove all files in /etc/update-motd.d
+          ansible.builtin.shell: rm -rf /etc/update-motd.d/*
+          args:
+            warn: false
+
+        - name: Download new motd
+          ansible.builtin.get_url:
+            url: https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/motd
+            dest: /etc/motd
 
     ############################################################
     - name: User Customizations
       become: false
       block:
+        - name: Download Oh My Zsh install script
+          ansible.builtin.get_url:
+            url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+            dest: "~/install_oh_my_zsh.sh"
+            mode: "0755"
+
         - name: Install Oh My Zsh
-          ansible.builtin.shell: |
-            wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O - | sh
+          ansible.builtin.shell: sh /tmp/install_oh_my_zsh.sh
           args:
             creates: ~/.oh-my-zsh
 
@@ -87,4 +160,5 @@
             - sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' ~/.zshrc
             - sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="daveverwer"/' ~/.zshrc
             - echo "emulate sh -c 'source /etc/profile'" | cat - ~/.zshrc > temp && mv temp ~/.zshrc
-            - curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/MOTD -o /etc/motd
+          args:
+            warn: false
