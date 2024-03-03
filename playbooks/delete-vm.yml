@@ -1,4 +1,26 @@
-# sudo virsh destroy $HEAD_SERVER_HOSTNAME
-# sudo virsh undefine $HEAD_SERVER_HOSTNAME
-# sudo virsh pool-destroy $HEAD_SERVER_HOSTNAME
-# sudo virsh pool-undefine $HEAD_SERVER_HOSTNAME
+---
+- name: Delete Virtual Machine
+  hosts: "{{ vm_host }}"
+  vars:
+    hostname: "{{ hostname }}"
+  tasks:
+    - name: Destroy VM
+      ansible.builtin.command:
+        cmd: "virsh destroy {{ hostname }}"
+
+    - name: Undefine VM
+      ansible.builtin.command:
+        cmd: "virsh undefine {{ hostname }}"
+
+    - name: Destroy VM's storage pool
+      ansible.builtin.command:
+        cmd: "virsh pool-destroy {{ hostname }}"
+
+    - name: Undefine VM's storage pool
+      ansible.builtin.command:
+        cmd: "virsh pool-undefine {{ hostname }}"
+
+    - name: Delete the directory
+      ansible.builtin.file:
+        path: "/storage/vms/{{ hostname }}"
+        state: absent
