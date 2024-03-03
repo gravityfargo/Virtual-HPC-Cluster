@@ -76,3 +76,6 @@ ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$HEAD_SERVER_HOSTN
 -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$HEAD_SERVER_IP"
+
+# curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/delete-vm.yml -o ~/delete-vm.yml
+# ansible-playbook --ask-become-pass delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$LOGIN_SERVER_HOSTNAME"
