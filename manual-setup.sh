@@ -15,7 +15,7 @@ sudo apt-mark hold snapd
 # remove unwanted packages
 sudo apt purge -y plymouth modemmanager
  # install some common packages
-sudo apt install -y net-tools zsh nfs-common nmap git ufw auditd
+sudo apt install -y net-tools zsh nfs-common nmap git ufw auditd prometheus-node-exporter
 
 # Time sync settings, requred for MUNGE
 sudo timedatectl set-timezone America/New_York
@@ -42,3 +42,21 @@ sudo sed -i 's/#PrintLastLog yes/PrintLastLog no/' /etc/ssh/sshd_config # disabl
 sudo rm -rf /etc/update-motd.d/* # remove stock dynamic motds
 sudo touch /etc/motd
 # insert assets\motd
+
+######################################
+# Services
+######################################
+sudo systemctl disable fwupd # Disable unnecessary service
+sudo systemctl disable fwupd-refresh # Disable unnecessary service
+sudo systemctl disable motd-news # Disable unnecessary service
+sudo systemctl enable systemd-timesyncd
+sudo systemctl enable prometheus-node-exporter
+sudo systemctl enable auditd
+sudo ufw enable
+
+######################################
+# Firewall
+######################################
+sudo ufw allow 9100/tcp comment "prometheus-node-exporter"
+sudo ufw allow ssh
+sudo ufw allow nfs
