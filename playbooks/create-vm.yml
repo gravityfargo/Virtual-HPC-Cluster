@@ -1,5 +1,5 @@
 - name: Create Virtual Machine
-  hosts: $STORAGE_SERVER_HOSTNAME
+  hosts: "{{ vm_host }}"
   vars:
     hostname: "{{ hostname }}"
     admin_user: "{{ admin_user }}"
