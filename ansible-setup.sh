@@ -30,11 +30,11 @@ sudo chmod 664 /etc/ansible/hosts
 ######################################
 # Prepare Ansible
 ######################################
-
+# if you have more than one physical server add them to the inventory file
 sudo tee /etc/ansible/hosts <<EOF
 [cluster]
 $STORAGE_SERVER_HOSTNAME ansible_host=$STORAGE_SERVER_IP
-$MANAGEMENT_SERVER_HOSTNAME ansible_host=localhost
+$MANAGEMENT_SERVER_HOSTNAME ansible_host=$MANAGEMENT_SERVER_IP
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
@@ -52,6 +52,7 @@ ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
 SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub)
 sed -i "s|SSH_PUBLIC_KEY_MGMT=\"\"|SSH_PUBLIC_KEY_MGMT=\"$SSH_KEY_CONTENT\"|g" ~/variables.sh
 
+ssh-copy-id $ADMIN_USER@$MANAGEMENT_SERVER_FQDN
 ssh-copy-id $ADMIN_USER@$STORAGE_SERVER_FQDN
 
 ######################################
