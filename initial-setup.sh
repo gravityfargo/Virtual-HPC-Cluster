@@ -6,11 +6,25 @@ sudo apt update -y && sudo apt upgrade -y
 
 sudo apt install -y zsh git curl wget whois
 
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/variables.sh
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/.variables.sh
 
-echo "source ~/variables.sh" >> ~/.bashrc && source ~/.bashrc
-echo "source ~/variables.sh" >> ~/.zshrc && source ~/.zshrc
+echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc
+echo "source ~/.variables.sh" >> ~/.zshrc && source ~/.zshrc
 
+######################################
+# Networking
+######################################
+sudo tee -a /etc/hosts <<EOF
+$STORAGE_SERVER_IP $STORAGE_SERVER_FQDN $STORAGE_SERVER_HOSTNAME
+$MANAGEMENT_SERVER_IP $MANAGEMENT_SERVER_FQDN $MANAGEMENT_SERVER_HOSTNAME
+$LOGIN_SERVER_IP $LOGIN_SERVER_FQDN $LOGIN_SERVER_HOSTNAME
+$WORKER_SERVER_IP $WORKER_SERVER_FQDN $WORKER_SERVER_HOSTNAME
+$HEAD_SERVER_IP $HEAD_SERVER_FQDN $HEAD_SERVER_HOSTNAME
+EOF
+
+######################################
+# Intall the Management VM
+######################################
 sudo mkdir -p /storage/vms/isos
 curl https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -o /storage/vms/isos/jammy-server-cloudimg-amd64.img
 
@@ -19,11 +33,6 @@ sudo usermod -aG kvm $ADMIN_USER
 sudo chmod 770 /storage/vms
 
 # logout and back in to apply group changes
-
-######################################
-# Intall the Management VM
-######################################
-
 mkdir /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
 cd /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
 
