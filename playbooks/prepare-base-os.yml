@@ -136,7 +136,7 @@
             mode: "0755"
 
         - name: Install Oh My Zsh
-          ansible.builtin.shell: sh /tmp/install_oh_my_zsh.sh
+          ansible.builtin.shell: sh /tmp/install_oh_my_zsh.sh --unattended
           args:
             creates: ~/.oh-my-zsh
 
