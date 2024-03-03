@@ -2,25 +2,25 @@
 - name: Delete Virtual Machine
   hosts: "{{ vm_host }}"
   vars:
-    hostname: "{{ hostname }}"
+    target_hostname: "{{ target_hostname }}"
   tasks:
     - name: Destroy VM
       ansible.builtin.command:
-        cmd: "virsh destroy {{ hostname }}"
+        cmd: "virsh destroy {{ target_hostname }}"
 
     - name: Undefine VM
       ansible.builtin.command:
-        cmd: "virsh undefine {{ hostname }}"
+        cmd: "virsh undefine {{ target_hostname }}"
 
     - name: Destroy VM's storage pool
       ansible.builtin.command:
-        cmd: "virsh pool-destroy {{ hostname }}"
+        cmd: "virsh pool-destroy {{ target_hostname }}"
 
     - name: Undefine VM's storage pool
       ansible.builtin.command:
-        cmd: "virsh pool-undefine {{ hostname }}"
+        cmd: "virsh pool-undefine {{ target_hostname }}"
 
     - name: Delete the directory
       ansible.builtin.file:
-        path: "/storage/vms/{{ hostname }}"
+        path: "/storage/vms/{{ target_hostname }}"
         state: absent
