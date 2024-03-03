@@ -1,0 +1,4 @@
+# sudo virsh destroy $HEAD_SERVER_HOSTNAME
+# sudo virsh undefine $HEAD_SERVER_HOSTNAME
+# sudo virsh pool-destroy $HEAD_SERVER_HOSTNAME
+# sudo virsh pool-undefine $HEAD_SERVER_HOSTNAME
