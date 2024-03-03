@@ -8,7 +8,7 @@
     - name: Packages
       become: true
       block:
-      
+
         - name: Upgrade all packages
           ansible.builtin.apt:
             upgrade: dist
@@ -132,7 +132,7 @@
         - name: Download Oh My Zsh install script
           ansible.builtin.get_url:
             url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
-            dest: "~/install_oh_my_zsh.sh"
+            dest: "/tmp/install_oh_my_zsh.sh"
             mode: "0755"
 
         - name: Install Oh My Zsh
