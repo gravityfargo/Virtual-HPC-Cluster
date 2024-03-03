@@ -2,8 +2,7 @@
 ######################################
 # Prepare the management server
 ######################################
-# this file is meant to be run on the management server immediately after it is created
-
+sudo apt update -y && sudo apt upgrade -y
 sudo apt install -y zsh git curl wget whois
 
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/variables.sh
@@ -85,4 +84,5 @@ ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$HEAD_SERVER_HOSTN
 ######################################
 # Prepare the base OSes
 ######################################
-# curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-os.yml -o ~/prepare-os.yml
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
+ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
