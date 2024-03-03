@@ -59,4 +59,5 @@ sudo virt-install \
 --cloud-init user-data=user-data.yaml,meta-data=meta-data.yaml \
 --debug
 
-# Now move on to ansible.sh
+# go to ansible-setup.sh for semi-automated setup of the rest of the cluster
+# go to manual-setup.sh for manual setup of the rest of the cluster

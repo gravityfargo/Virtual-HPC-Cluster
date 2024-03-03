@@ -36,9 +36,6 @@ sudo tee /etc/ansible/hosts <<EOF
 [cluster]
 $STORAGE_SERVER_HOSTNAME ansible_host=$STORAGE_SERVER_IP
 $MANAGEMENT_SERVER_HOSTNAME ansible_host=localhost
-# $LOGIN_SERVER_HOSTNAME ansible_host=$LOGIN_SERVER_IP
-# $WORKER_SERVER_HOSTNAME ansible_host=$WORKER_SERVER_IP
-# $HEAD_SERVER_HOSTNAME ansible_host=$HEAD_SERVER_IP
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
@@ -77,5 +74,10 @@ ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$HEAD_SERVER_HOSTN
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$HEAD_SERVER_IP"
 
+######################################
+# Delete VMs
+######################################
+
 # curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/delete-vm.yml -o ~/delete-vm.yml
 # ansible-playbook --ask-become-pass delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$LOGIN_SERVER_HOSTNAME"
+# ansible-playbook --ask-become-pass delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$HEAD_SERVER_HOSTNAME"
