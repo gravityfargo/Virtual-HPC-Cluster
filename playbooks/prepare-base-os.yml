@@ -5,15 +5,19 @@
     admin_user: "{{ admin_user }}"
   tasks:
     ############################################################
-    - name: Packages
+    - name: Setup Packages
       become: true
       block:
 
-        - name: Upgrade all packages
+        - name: Update apt cache
+          ansible.builtin.apt:
+            update_cache: yes
+            cache_valid_time: 3600 # Cache valid for 1 hour to avoid repeated updates
+
+        - name: Upgrade all packages to the latest version
           ansible.builtin.apt:
             upgrade: dist
-            update_cache: yes
-      
+
         - name: Remove unwanted packages
           ansible.builtin.apt:
             name: "{{ item }}"
@@ -41,19 +45,32 @@
             - auditd
             - whois
             - prometheus-node-exporter
+            - lua5.3 # start of lmod dependencies
+            - lua-bit32:amd64
+            - lua-posix:amd64
+            - lua-posix-dev
+            - liblua5.3-0:amd64
+            - liblua5.3-dev:amd64
+            - tcl
+            - tcl-dev
+            - tcl8.6
+            - tcl8.6-dev:amd64
+            - libtcl8.6:amd64
+            - gfortran # start of spack dependencies 
+            - gnupg2
+            - python3-pip 
+            - libpmix2
 
     ############################################################
-    - name: General Settings
+    - name: Services
       become: true
       block:
+
         - name: Set timezone to America/New_York
           ansible.builtin.shell: timedatectl set-timezone America/New_York
 
         - name: Enable NTP
           ansible.builtin.shell: timedatectl set-ntp true
-
-        - name: Change the admin's default shell to Zsh
-          ansible.builtin.shell: chsh -s $(which zsh) {{ admin_user }}
 
         - name: Enable essential services
           ansible.builtin.systemd:
@@ -72,6 +89,11 @@
             state: stopped
           loop:
             - motd-news
+
+    ############################################################
+    - name: Firewall
+      become: true
+      block:
 
         - name: Allow prometheus-node-exporter on 9100/tcp
           ansible.builtin.ufw:
@@ -98,11 +120,27 @@
           ansible.builtin.ufw:
             state: enabled
 
+
     ############################################################
-    - name: System Customizations
+    - name: Networking
       become: true
       block:
-        - name: Comment out pam_mail.so in sshd
+
+        - name: Copy /etc/hosts from local to remote
+          ansible.builtin.copy:
+            src: /etc/hosts
+            dest: /etc/hosts
+            owner: root
+            group: root
+            mode: '0644'
+          become: true
+
+    ############################################################
+    - name: SSH Settings
+      become: true
+      block:
+
+        - name: Disable mail in PAM
           ansible.builtin.lineinfile:
             path: /etc/pam.d/sshd
             regexp: '^(session[ \t]+optional[ \t]+pam_mail.so.*)$'
@@ -115,20 +153,46 @@
             regexp: "^#?PrintLastLog yes"
             line: "PrintLastLog no"
 
+        - name: Disable Challenge-Response Authentication
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '^#?ChallengeResponseAuthentication yes'
+            line: 'ChallengeResponseAuthentication no'
+          become: true
+
+        - name: Disable Password Authentication
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '^#?PasswordAuthentication yes'
+            line: 'PasswordAuthentication no'
+          become: true
+
+        - name: Disable Root Login
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '^#?PermitRootLogin prohibit-password'
+            line: 'PermitRootLogin no'
+          become: true
+
+    ############################################################
+    - name: MOTD
+      become: true
+      block:
+
         - name: Remove all files in /etc/update-motd.d
           ansible.builtin.shell: rm -rf /etc/update-motd.d/*
           args:
             warn: false
 
-        - name: Download new motd
-          ansible.builtin.get_url:
-            url: https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/motd
-            dest: /etc/motd
-
     ############################################################
     - name: User Customizations
       become: false
       block:
+
+        - name: Change the admin's default shell to Zsh
+          become: true
+          ansible.builtin.shell: chsh -s $(which zsh) {{ admin_user }}
+
         - name: Download Oh My Zsh install script
           ansible.builtin.get_url:
             url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
@@ -154,7 +218,7 @@
                 dest: "~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting",
               }
 
-        - name: Update zshrc
+        - name: Update Zsh configuration
           ansible.builtin.shell: "{{ item }}"
           loop:
             - sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' ~/.zshrc
@@ -162,3 +226,76 @@
             - echo "emulate sh -c 'source /etc/profile'" | cat - ~/.zshrc > temp && mv temp ~/.zshrc
           args:
             warn: false
+
+    ############################################################
+    - name: Mount Points and environment management 
+      become: true
+      block:
+
+        - name: Create necessary directories
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: directory
+            mode: '0755' # or any other mode you deem appropriate
+          loop:
+            - /storage/home
+            - /storage/projects
+            - /storage/sw
+            - /storage/spack
+
+        - name: Create slurm user
+          ansible.builtin.user:
+            name: slurm
+            comment: "Create Slurm User"
+            uid: 1001
+            group: slurm
+            createhome: yes
+            home: /var/lib/slurm
+            shell: /bin/bash
+
+        - name: Create software manager user
+          ansible.builtin.user:
+            name: swmanager
+            comment: "Software Manager User"
+            uid: 1002
+            group: swmanager
+            createhome: yes
+            home: /home/swmanager
+            shell: /bin/bash
+
+        - name: Create file manager user
+          ansible.builtin.user:
+            name: filemanager
+            comment: "File Manager User"
+            uid: 1003
+            group: filemanager
+            createhome: no
+            system: yes
+
+        - name: Change ownership of /storage/sw to swmanager
+          ansible.builtin.file:
+            path: /storage/sw
+            owner: swmanager
+            group: swmanager
+            state: directory
+
+        - name: Change ownership of /storage/spack to swmanager
+          ansible.builtin.file:
+            path: /storage/spack
+            owner: swmanager
+            group: swmanager
+            state: directory
+
+        - name: Change ownership of /storage/projects to filemanager
+          ansible.builtin.file:
+            path: /storage/projects
+            owner: filemanager
+            group: filemanager
+            state: directory
+
+        - name: Change ownership of /storage/home to filemanager
+          ansible.builtin.file:
+            path: /storage/home
+            owner: filemanager
+            group: filemanager
+            state: directory
