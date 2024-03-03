@@ -12,6 +12,14 @@ echo "source ~/variables.sh" >> ~/.zshrc && source ~/.zshrc
 
 sudo touch /etc/cloud/cloud-init.disabled # disable cloud-init
 
+sudo tee -a /etc/hosts <<EOF
+$STORAGE_SERVER_IP $STORAGE_SERVER_FQDN $STORAGE_SERVER_HOSTNAME
+$MANAGEMENT_SERVER_IP $MANAGEMENT_SERVER_FQDN $MANAGEMENT_SERVER_HOSTNAME
+$LOGIN_SERVER_IP $LOGIN_SERVER_FQDN $LOGIN_SERVER_HOSTNAME
+$WORKER_SERVER_IP $WORKER_SERVER_FQDN $WORKER_SERVER_HOSTNAME
+$HEAD_SERVER_IP $HEAD_SERVER_FQDN $HEAD_SERVER_HOSTNAME
+EOF
+
 sudo apt-add-repository ppa:ansible/ansible
 sudo apt update && sudo apt upgrade -y 
 
@@ -86,4 +94,5 @@ ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$HEAD_SERVER_HOSTN
 # Prepare the base OSes
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
-ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=all" -e "admin_user=$ADMIN_USER"
+echo "source ~/variables.sh" >> ~/.zshrc && source ~/.zshrc
