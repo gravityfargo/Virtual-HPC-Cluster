@@ -61,9 +61,18 @@ ssh-copy-id $ADMIN_USER@$STORAGE_SERVER_FQDN
 ######################################
 # Create nessessary VMs
 ######################################
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/create-vm.yml -o ~/create-vm.yml
 
 ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$LOGIN_SERVER_HOSTNAME" \
+-e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
 -e "admin_user=$ADMIN_USER" -e "mac=$LOGIN_SERVER_MAC" \
 -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$LOGIN_SERVER_IP"
+
+ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
+-e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
+-e "admin_user=$ADMIN_USER" -e "mac=$HEAD_SERVER_MAC" \
+-e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
+-e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
+-e "ip=$HEAD_SERVER_IP"
