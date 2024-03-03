@@ -1,37 +1,90 @@
 ---
-- name: Clean and setup the base system
+- name: Prepare the base OS
   hosts: "{{ target_hostname }}"
+  vars:
+    admin_user: "{{ admin_user }}"
   become: true
   tasks:
-    - name: Remove unwanted packages
-      ansible.builtin.apt:
-        name: "{{ item }}"
-        state: absent
-      loop:
-        - plymouth
-        - modemmanager
-        - snapd
+    ############################################################
+    - name: Packages
+      block:
+        - name: Remove unwanted packages
+          ansible.builtin.apt:
+            name: "{{ item }}"
+            state: absent
+          loop:
+            - plymouth
+            - modemmanager
+            - snapd
 
-    - name: Prevent snapd from being installed
-      ansible.builtin.shell: apt-mark hold snapd
+        - name: Prevent snapd from being installed
+          ansible.builtin.shell: apt-mark hold snapd
 
-    - name: Install common packages
-      ansible.builtin.apt:
-        name: "{{ item }}"
-        state: present
-        update_cache: yes
-      loop:
-        - net-tools
-        - zsh
-        - nfs-common
-        - nmap
-        - git
-        - ufw
-        - auditd
-        - whois
+        - name: Install common packages
+          ansible.builtin.apt:
+            name: "{{ item }}"
+            state: present
+            update_cache: yes
+          loop:
+            - net-tools
+            - zsh
+            - nfs-common
+            - nmap
+            - git
+            - ufw
+            - auditd
+            - whois
 
-    - name: Set timezone to America/New_York
-      ansible.builtin.shell: timedatectl set-timezone America/New_York
+    ############################################################
+    - name: General Settings
+      block:
+        - name: Set timezone to America/New_York
+          ansible.builtin.shell: timedatectl set-timezone America/New_York
 
-    - name: Enable NTP
-      ansible.builtin.shell: timedatectl set-ntp true
+        - name: Enable NTP
+          ansible.builtin.shell: timedatectl set-ntp true
+
+        - name: Change the admin's default shell to Zsh
+          ansible.builtin.shell: chsh -s $(which zsh) {{ admin_user }}
+
+    ############################################################
+    - name: System Customizations
+      block:
+        - name: Update MOTD
+          ansible.builtin.shell: "{{ item }}"
+          loop:
+          - sed -i '/session[ \t]\+optional[ \t]\+pam_mail.so/s/^/#/' /etc/pam.d/sshd
+          - sed -i 's/#PrintLastLog yes/PrintLastLog no/' /etc/ssh/sshd_config
+          - rm -rf /etc/update-motd.d/*
+
+    ############################################################
+    - name: User Customizations
+      become: false
+      block:
+        - name: Install Oh My Zsh
+          ansible.builtin.shell: |
+            wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O - | sh
+          args:
+            creates: ~/.oh-my-zsh
+
+        - name: Install Zsh plugins
+          ansible.builtin.git:
+            repo: "{{ item.repo }}"
+            dest: "{{ item.dest }}"
+          loop:
+            - {
+                repo: "https://github.com/zsh-users/zsh-autosuggestions",
+                dest: "~/.oh-my-zsh/custom/plugins/zsh-autosuggestions",
+              }
+            - {
+                repo: "https://github.com/zsh-users/zsh-syntax-highlighting.git",
+                dest: "~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting",
+              }
+
+        - name: Update zshrc
+          ansible.builtin.shell: "{{ item }}"
+          loop:
+            - sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' ~/.zshrc
+            - sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="daveverwer"/' ~/.zshrc
+            - echo "emulate sh -c 'source /etc/profile'" | cat - ~/.zshrc > temp && mv temp ~/.zshrc
+            - curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/MOTD -o /etc/motd
