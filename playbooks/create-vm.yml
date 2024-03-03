@@ -12,19 +12,19 @@
 
   tasks:
     - name: Create VM storage directory
-      file:
+      ansible.builtin.file:
         path: "{{ vm_storage_path }}"
         state: directory
         
     - name: Generate meta-data.yaml
-      copy:
+      ansible.builtin.copy:
         dest: "{{ vm_storage_path }}/meta-data.yaml"
         content: |
           instance-id: {{ hostname }}
           local-hostname: {{ hostname }}
 
     - name: Generate user-data.yaml
-      copy:
+      ansible.builtin.copy:
         dest: "{{ vm_storage_path }}/user-data.yaml"
         content: |
           #cloud-config
@@ -40,12 +40,11 @@
               lock_passwd: false
 
     - name: Create VM base image
-      shell: qemu-img create -b {{ base_image_path }} -f qcow2 -F qcow2 {{ vm_storage_path }}/{{ hostname }}-base.img 40G
+      ansible.builtin.shell: qemu-img create -b {{ base_image_path }} -f qcow2 -F qcow2 {{ vm_storage_path }}/{{ hostname }}-base.img 40G
 
     - name: Install VM using virt-install
-      become: yes
-      become_method: sudo
-      shell: |
+      become: true
+      ansible.builtin.shell: |
         virt-install \
         --name {{ hostname }} \
         --ram 4096 \
@@ -61,7 +60,7 @@
     - name: Add VM to Ansible inventory file on control node
       delegate_to: localhost
       become: false
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ansible/hosts
         insertafter: "[cluster]$"
         line: "{{ hostname }} ansible_host={{ ip }}"
