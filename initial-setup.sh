@@ -2,6 +2,8 @@
 ######################################
 # Prepare the main host
 ######################################
+sudo apt update -y && sudo apt upgrade -y
+
 sudo apt install -y zsh git curl wget whois
 
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/variables.sh
