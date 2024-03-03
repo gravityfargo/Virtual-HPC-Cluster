@@ -1,0 +1,37 @@
+---
+- name: Clean and setup the base system
+  hosts: "{{ target_hostname }}"
+  become: true
+  tasks:
+    - name: Remove unwanted packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - plymouth
+        - modemmanager
+        - snapd
+
+    - name: Prevent snapd from being installed
+      ansible.builtin.shell: apt-mark hold snapd
+
+    - name: Install common packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop:
+        - net-tools
+        - zsh
+        - nfs-common
+        - nmap
+        - git
+        - ufw
+        - auditd
+        - whois
+
+    - name: Set timezone to America/New_York
+      ansible.builtin.shell: timedatectl set-timezone America/New_York
+
+    - name: Enable NTP
+      ansible.builtin.shell: timedatectl set-ntp true
