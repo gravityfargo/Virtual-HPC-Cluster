@@ -1,7 +1,6 @@
 ---
 - name: Delete Virtual Machine
   hosts: "{{ vm_host }}"
-  become: true
   vars:
     target_hostname: "{{ target_hostname }}"
   tasks:
