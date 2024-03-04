@@ -33,7 +33,7 @@
             - name: {{ admin_user }}
               sudo: ALL=(ALL) NOPASSWD:ALL
               shell: /bin/bash
-              groups: sudo, wheel
+              groups: sudo
               ssh_authorized_keys:
                 - {{ ssh_public_key_personal }}
                 - {{ ssh_public_key_mgmt }}
@@ -43,7 +43,6 @@
       ansible.builtin.shell: qemu-img create -b {{ base_image_path }} -f qcow2 -F qcow2 {{ vm_storage_path }}/{{ hostname }}-base.img 40G
 
     - name: Install VM using virt-install
-      become: true
       ansible.builtin.shell: |
         virt-install \
         --name {{ hostname }} \
@@ -59,7 +58,6 @@
 
     - name: Add VM to Ansible inventory file on control node
       delegate_to: localhost
-      become: false
       ansible.builtin.lineinfile:
         path: /etc/ansible/hosts
         insertafter: "[cluster]$"
