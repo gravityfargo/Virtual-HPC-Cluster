@@ -54,7 +54,11 @@
         --network bridge=br0,model=virtio,mac={{ mac }} \
         --graphics vnc,listen=0.0.0.0 --noautoconsole \
         --cloud-init user-data={{ vm_storage_path }}/user-data.yaml,meta-data={{ vm_storage_path }}/meta-data.yaml \
-        --debug
+      register: virt_install_output
+
+    - name: virt-install output
+      ansible.builtin.debug:
+        var: virt_install_output.stdout_lines
 
     - name: Add VM to Ansible inventory file on control node
       delegate_to: localhost
