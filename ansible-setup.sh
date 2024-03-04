@@ -99,9 +99,9 @@ curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/pla
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
 ansible-playbook prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$HEAD_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-# ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-# ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-# ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+# ansible-playbook prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+# ansible-playbook prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+# ansible-playbook prepare-base-os.yml -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 
 ######################################
 # Prepare the hpc clients
