@@ -1,16 +1,17 @@
 #!/bin/bash
 ######################################
-# Setup Packages
+# Setup Packages on Management Server
 ######################################
-sudo apt update -y && sudo apt upgrade -y
+sudo apt update -y && sudo apt -y upgrade && \
 sudo apt install -y zsh git curl wget whois
 
+echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc && \
+echo "source ~/.variables.sh" >> ~/.zshrc && source ~/.zshrc
 
+sudo sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
+sudo systemctl restart sshd
 
-echo "source ~/variables.sh" >> ~/.bashrc && source ~/.bashrc
-echo "source ~/variables.sh" >> ~/.zshrc && source ~/.zshrc
-
-sudo touch /etc/cloud/cloud-init.disabled # disable cloud-init
+sudo touch /etc/cloud/cloud-init.disabled
 
 sudo tee -a /etc/hosts <<EOF
 $STORAGE_SERVER_IP $STORAGE_SERVER_FQDN $STORAGE_SERVER_HOSTNAME
@@ -20,69 +21,64 @@ $WORKER_SERVER_IP $WORKER_SERVER_FQDN $WORKER_SERVER_HOSTNAME
 $HEAD_SERVER_IP $HEAD_SERVER_FQDN $HEAD_SERVER_HOSTNAME
 EOF
 
-sudo apt-add-repository ppa:ansible/ansible
-sudo apt update && sudo apt upgrade -y 
-
+sudo apt-add-repository ppa:ansible/ansible && \
 sudo apt install -y ansible
-sudo mkdir -p /etc/ansible
 
-sudo groupadd -r ansibleadmins
-sudo usermod -aG ansibleadmins $ADMIN_USER
+sudo groupadd -r ansibleadmins && \
+sudo usermod -aG ansibleadmins $ADMIN_USER && \
+exec sudo su -l $USER
 
-sudo chown root:ansibleadmins /etc/ansible
-sudo chmod 770 /etc/ansible
+sudo chown -R root:ansibleadmins /etc/ansible && \
+sudo chmod 774 /etc/ansible && \
 sudo chmod 664 /etc/ansible/hosts
-
-# log user out and back in to apply group changes
 
 ######################################
 # Prepare Ansible
 ######################################
 # if you have more than one physical server add them to the inventory file
-sudo tee /etc/ansible/hosts <<EOF
+tee /etc/ansible/hosts <<EOF
 [cluster]
-$STORAGE_SERVER_HOSTNAME ansible_host=$STORAGE_SERVER_IP
-$MANAGEMENT_SERVER_HOSTNAME ansible_host=$MANAGEMENT_SERVER_IP
+$STORAGE_SERVER_HOSTNAME
+$MANAGEMENT_SERVER_HOSTNAME
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
 EOF
 
-sudo tee -a /etc/hosts <<EOF
-$STORAGE_SERVER_IP $STORAGE_SERVER_FQDN $STORAGE_SERVER_HOSTNAME
-$MANAGEMENT_SERVER_IP $MANAGEMENT_SERVER_FQDN $MANAGEMENT_SERVER_HOSTNAME
-$LOGIN_SERVER_IP $LOGIN_SERVER_FQDN $LOGIN_SERVER_HOSTNAME
-$WORKER_SERVER_IP $WORKER_SERVER_FQDN $WORKER_SERVER_HOSTNAME
-$HEAD_SERVER_IP $HEAD_SERVER_FQDN $HEAD_SERVER_HOSTNAME
-EOF
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
+SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub) && \
+echo export SSH_PUBLIC_KEY_MGMT=\"$SSH_KEY_CONTENT\" >> ~/.variables.sh && \
+source ~/.bashrc && source ~/.zshrc
 
-ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
-SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub)
-sed -i "s|SSH_PUBLIC_KEY_MGMT=\"\"|SSH_PUBLIC_KEY_MGMT=\"$SSH_KEY_CONTENT\"|g" ~/variables.sh
+echo $SSH_PUBLIC_KEY_MGMT >> ~/.ssh/authorized_keys
 
-ssh-copy-id $ADMIN_USER@$MANAGEMENT_SERVER_FQDN
-ssh-copy-id $ADMIN_USER@$STORAGE_SERVER_FQDN
+ssh-keyscan $STORAGE_SERVER_HOSTNAME >> ~/.ssh/known_hosts && \
+ssh-keyscan $MANAGEMENT_SERVER_HOSTNAME >> ~/.ssh/known_hosts
+
+ssh-copy-id $STORAGE_SERVER_HOSTNAME
+
+ansible all -m ping
 
 ######################################
 # Create nessessary VMs
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/create-vm.yml -o ~/create-vm.yml
 
-ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$LOGIN_SERVER_HOSTNAME" \
+ansible-playbook create-vm.yml -e "hostname=$LOGIN_SERVER_HOSTNAME" \
 -e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
 -e "admin_user=$ADMIN_USER" -e "mac=$LOGIN_SERVER_MAC" \
 -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$LOGIN_SERVER_IP"
 
-ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
+ansible-playbook create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
 -e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
 -e "admin_user=$ADMIN_USER" -e "mac=$HEAD_SERVER_MAC" \
 -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$HEAD_SERVER_IP"
 
-# ansible-playbook --ask-become-pass create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
+# ansible-playbook create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
 # -e "vm_host='$WORKER_SERVER_HOSTNAME'" \
 # -e "admin_user=$ADMIN_USER" -e "mac=$WORKER_SERVER_MAC" \
 # -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
@@ -101,7 +97,7 @@ curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/pla
 # Prepare the base OSes
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
-ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+ansible-playbook prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$HEAD_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 # ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 # ansible-playbook --ask-become-pass prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
