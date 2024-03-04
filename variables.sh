@@ -3,7 +3,6 @@
 ######################################
 export ADMIN_USER=""
 export SSH_PUBLIC_KEY_PERSONAL=""
-export SSH_PUBLIC_KEY_MGMT=""
 
 export STORAGE_SERVER_FQDN=""
 export STORAGE_SERVER_HOSTNAME=""
