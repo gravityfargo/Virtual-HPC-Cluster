@@ -181,8 +181,11 @@
 
         - name: Remove all files in /etc/update-motd.d
           ansible.builtin.shell: rm -rf /etc/update-motd.d/*
-          args:
-            warn: false
+
+        - name: Download MOTD file
+          ansible.builtin.get_url:
+            url: https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/motd
+            dest: /etc/motd
 
     ############################################################
     - name: User Customizations
