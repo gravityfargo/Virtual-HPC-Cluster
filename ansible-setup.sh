@@ -90,8 +90,8 @@ ansible-playbook create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
 ######################################
 
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/delete-vm.yml -o ~/delete-vm.yml
-# ansible-playbook --ask-become-pass delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$LOGIN_SERVER_HOSTNAME"
-# ansible-playbook --ask-become-pass delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$HEAD_SERVER_HOSTNAME"
+# ansible-playbook delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$LOGIN_SERVER_HOSTNAME"
+# ansible-playbook delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$HEAD_SERVER_HOSTNAME"
 
 ######################################
 # Prepare the base OSes
