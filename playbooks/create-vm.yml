@@ -65,5 +65,5 @@
       ansible.builtin.lineinfile:
         path: /etc/ansible/hosts
         insertafter: "[cluster]$"
-        line: "{{ hostname }} ansible_host={{ ip }}"
+        line: "{{ hostname }}"
         state: present
