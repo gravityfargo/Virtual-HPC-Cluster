@@ -2,28 +2,30 @@
 ######################################
 # Prepare the main host
 ######################################
-sudo apt update -y && sudo apt upgrade -y
-
+sudo apt update -y && sudo apt upgrade -y && \
 sudo apt install -y zsh git curl wget whois
 
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/.variables.sh
 
-ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
-SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub)
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
+SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub) && \
 echo export SSH_PUBLIC_KEY_STORAGE=\"$SSH_KEY_CONTENT\" >> ~/.variables.sh
 
-echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc
+echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc && \
 echo "source ~/.variables.sh" >> ~/.zshrc && source ~/.zshrc
 
 ######################################
 # libvirt setup
 ######################################
 sudo lscpu
-sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients virtinst libosinfo-bin
-sudo apt install libguestfs-tools cpu-checker virt-manager
 
-sudo usermod -aG libvirt-qemu $ADMIN_USER
+sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients virtinst libosinfo-bin \
+libguestfs-tools cpu-checker virt-manager
+
+sudo usermod -aG libvirt-qemu $ADMIN_USER && \
 sudo usermod -aG kvm $ADMIN_USER
+
+exec sudo su -l $USER
 
 ip a | grep en # find the name of your NIC
 
@@ -60,7 +62,9 @@ sudo tee -a /root/bridged.xml <<EOF
 EOF
 
 sudo virsh net-define --file /root/bridged.xml
+
 sudo virsh net-list --all # validate
+
 sudo virsh net-autostart br0
 
 sudo mkdir /etc/qemu/
@@ -69,14 +73,14 @@ sudo tee /etc/qemu/bridge.conf <<EOF
 allow br0
 EOF
 
-sudo chown root:kvm /etc/qemu/bridge.conf
-sudo chmod 0660 /etc/qemu/bridge.conf
-sudo chmod u+s /usr/lib/qemu/qemu-bridge-helper
+sudo chown root:kvm /etc/qemu/bridge.conf && \
+sudo chmod 0660 /etc/qemu/bridge.conf && \
+sudo chmod u+s /usr/lib/qemu/qemu-bridge-helper && \
 sudo systemctl restart libvirtd
 
-sudo mkdir -p /storage/vms/isos
-sudo chmod 770 -R /storage/vms
-sudo chown -R libvirt-qemu:kvm /storage/vms
+sudo mkdir -p /storage/vms/isos && \
+sudo chmod 770 -R /storage/vms && \
+sudo chown -R libvirt-qemu:kvm /storage/vms && \
 sudo chmod g+s /storage/vms
 
 curl https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -o /storage/vms/isos/jammy-server-cloudimg-amd64.img
@@ -97,7 +101,7 @@ EOF
 ######################################
 # Intall the Management VM
 ######################################
-mkdir /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
+mkdir /storage/vms/$MANAGEMENT_SERVER_HOSTNAME && \
 cd /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
 
 tee meta-data.yaml <<EOF
@@ -133,9 +137,9 @@ virt-install \
 --graphics vnc,listen=0.0.0.0 --noautoconsole \
 --cloud-init user-data=user-data.yaml,meta-data=meta-data.yaml
 
-# virsh destroy $MANAGEMENT_SERVER_HOSTNAME
-# virsh undefine $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage
-# rm -rf /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
+# virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
+# virsh undefine $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
+# rm -rf /storage/vms/$MANAGEMENT_SERVER_HOSTNAME && \
 # ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R "$MANAGEMENT_SERVER_HOSTNAME"
 
 # wait for the VM to boot and then run the following commands
