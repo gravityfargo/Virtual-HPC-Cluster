@@ -71,19 +71,19 @@ ansible-playbook create-vm.yml -e "hostname=$LOGIN_SERVER_HOSTNAME" \
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$LOGIN_SERVER_IP"
 
-ansible-playbook create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
--e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
--e "admin_user=$ADMIN_USER" -e "mac=$HEAD_SERVER_MAC" \
--e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
--e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
--e "ip=$HEAD_SERVER_IP"
-
 # ansible-playbook create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
 # -e "vm_host='$WORKER_SERVER_HOSTNAME'" \
 # -e "admin_user=$ADMIN_USER" -e "mac=$WORKER_SERVER_MAC" \
 # -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
 # -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 # -e "ip=$WORKER_SERVER_IP"
+
+ansible-playbook create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
+-e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
+-e "admin_user=$ADMIN_USER" -e "mac=$HEAD_SERVER_MAC" \
+-e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
+-e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
+-e "ip=$HEAD_SERVER_IP"
 
 ######################################
 # Delete VMs
@@ -97,12 +97,12 @@ curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/pla
 # Prepare the base OSes
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
+ansible-playbook prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+ansible-playbook prepare-base-os.yml -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+ansible-playbook prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$HEAD_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-# ansible-playbook prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-# ansible-playbook prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-# ansible-playbook prepare-base-os.yml -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 
-######################################
-# Prepare the hpc clients
-######################################
+
+ansible-playbook prepare-storage-server.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" \
+-e "subnet=$SUBNET" \
