@@ -7,8 +7,8 @@
     ssh_public_key_mgmt: "{{ ssh_public_key_mgmt }}"
     ip: "{{ ip }}"
     mac: "{{ mac }}"
-    base_image_path: "/storage/vms/isos/jammy-server-cloudimg-amd64.img"
-    vm_storage_path: "/storage/vms/{{ hostname }}"
+    base_image_path: "/vms/isos/jammy-server-cloudimg-amd64.img"
+    vm_storage_path: "/vms/{{ hostname }}"
 
   tasks:
     - name: Create VM storage directory
@@ -43,6 +43,7 @@
       ansible.builtin.shell: qemu-img create -b {{ base_image_path }} -f qcow2 -F qcow2 {{ vm_storage_path }}/{{ hostname }}-base.img 40G
 
     - name: Install VM using virt-install
+      become: true
       ansible.builtin.shell: |
         virt-install \
         --name {{ hostname }} \
