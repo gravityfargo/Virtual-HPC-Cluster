@@ -5,6 +5,7 @@
 sudo apt update -y && sudo apt upgrade -y && \
 sudo apt install -y zsh git curl wget whois
 
+# fill in this file with your relevant info. 
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/.variables.sh
 
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
