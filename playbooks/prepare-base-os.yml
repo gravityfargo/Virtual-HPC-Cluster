@@ -21,7 +21,6 @@
             state: absent
           loop:
             - plymouth
-            - modemmanager
             - snapd
 
         - name: Prevent snapd from being installed
@@ -158,10 +157,10 @@
           register: motd_file
 
         - name: Make all files in /etc/update-motd.d non-executable if MOTD doesn't exist
-          ansible.builtin.command: chmod -x /etc/update-motd.d/*
+          ansible.builtin.shell: chmod -x /etc/update-motd.d/*
           when: not motd_file.stat.exists
           args:
-            removes: /etc/motd # Runs only if /etc/motd is not already present, can be omitted if you prefer to always run
+            warn: false # Add this line to disable the warning about using 'shell' instead of 'command'
 
         - name: Download MOTD file if it doesn't exist
           ansible.builtin.get_url:
