@@ -1,0 +1,97 @@
+---
+- name: Prepare the Storage Server
+  hosts: "{{ storage_server_hostname }}"
+  become: true
+  vars:
+    subnet: "{{ subnet }}"
+    lmod_version: "{{ lmod_version }}"
+  tasks:
+    ############################################################
+    - name: Create necessary directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /storage/home
+        - /storage/projects
+        - /storage/sw
+        - /storage/spack
+
+    ############################################################
+    - name: Install dependencies
+      ansible.builtin.apt:
+        name:
+          - liblua5.3-dev
+          - tcl-dev
+          - libreadline-dev
+          - nfs-kernel-server
+          - bc
+        state: present
+        update_cache: yes
+
+    ############################################################
+    - name: NFS
+      become: true
+      block:
+
+        - name: Enable NFS Kernel Server
+          ansible.builtin.systemd:
+            name: nfs-kernel-server
+            enabled: yes
+            state: started
+
+        - name: Add NFS export entries to /etc/exports
+          ansible.builtin.lineinfile:
+            path: /etc/exports
+            line: "{{ item }}"
+            create: yes
+          loop:
+            - "/storage/projects  {{ subnet }}(rw,sync,no_subtree_check)"
+            - "/storage/home   {{ subnet }}(rw,sync,no_subtree_check)"
+            - "/storage/sw    {{ subnet }}(rw,sync,no_subtree_check)"
+            - "/storage/spack   {{ subnet }}(rw,sync,no_subtree_check)"
+
+        - name: Apply NFS exports
+          ansible.builtin.command: exportfs -a
+
+    ############################################################
+    - name: lmod
+      become: true
+      block:
+
+        - name: Download and extract Lmod
+          ansible.builtin.unarchive:
+            src: "https://github.com/TACC/Lmod/archive/refs/tags/{{ lmod_version }}.tar.gz"
+            dest: "/tmp"
+            remote_src: true
+
+        - name: Install Lmod
+          ansible.builtin.shell: |
+            cd /tmp/Lmod-{{ lmod_version }}
+            ./configure --prefix=/storage/sw
+            make install
+          args:
+            creates: "/storage/sw/lmod"
+
+        - name: Create symbolic link for Lmod profile script
+          ansible.builtin.file:
+            src: "/storage/sw/lmod/lmod/init/profile"
+            dest: /etc/profile.d/z00_lmod.sh
+            state: link
+
+        - name: Set MODULEPATH environment variable
+          ansible.builtin.lineinfile:
+            path: /etc/environment
+            line: 'MODULEPATH="/storage/sw/modules/linux-ubuntu22.04-x86_64/Core"'
+            create: true
+
+        - name: Change ownership of /storage/sw to swmanager
+          ansible.builtin.file:
+            path: /storage/sw
+            owner: swmanager
+            group: swmanager
+            state: directory
+            recurse: true
+
+    ############################################################
