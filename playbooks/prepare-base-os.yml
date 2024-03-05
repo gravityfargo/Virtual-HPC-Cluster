@@ -9,14 +9,11 @@
       become: true
       block:
 
-        - name: Update apt cache
+        - name: Update and upgrade all packages
           ansible.builtin.apt:
             update_cache: yes
-            cache_valid_time: 3600 # Cache valid for 1 hour to avoid repeated updates
-
-        - name: Upgrade all packages to the latest version
-          ansible.builtin.apt:
             upgrade: dist
+            cache_valid_time: 3600 # Cache valid for 1 hour
 
         - name: Remove unwanted packages
           ansible.builtin.apt:
@@ -34,14 +31,11 @@
           ansible.builtin.apt:
             name: "{{ item }}"
             state: present
-            update_cache: yes
           loop:
             - net-tools
             - zsh
             - nfs-common
             - nmap
-            - git
-            - ufw
             - auditd
             - whois
             - prometheus-node-exporter
@@ -66,60 +60,40 @@
       become: true
       block:
 
-        - name: Set timezone to America/New_York
-          ansible.builtin.shell: timedatectl set-timezone America/New_York
+        - name: Set timezone and enable NTP
+          ansible.builtin.timezone:
+            name: America/New_York
 
-        - name: Enable NTP
-          ansible.builtin.shell: timedatectl set-ntp true
-
-        - name: Enable essential services
+        - name: Disable or enable services
           ansible.builtin.systemd:
-            name: "{{ item }}"
-            enabled: yes
-            state: started
+            name: "{{ item.name }}"
+            enabled: "{{ item.enabled }}"
+            state: "{{ item.state }}"
           loop:
-            - systemd-timesyncd
-            - prometheus-node-exporter
-            - auditd
-
-        - name: Disable unnecessary services
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            enabled: no
-            state: stopped
-          loop:
-            - motd-news
+            - { name: 'systemd-timesyncd', enabled: yes, state: started }
+            - { name: 'prometheus-node-exporter', enabled: yes, state: started }
+            - { name: 'auditd', enabled: yes, state: started }
+            - { name: 'motd-news', enabled: no, state: stopped }
 
     ############################################################
     - name: Firewall
       become: true
       block:
 
-        - name: Allow prometheus-node-exporter on 9100/tcp
+        - name: Configure UFW rules
           ansible.builtin.ufw:
             rule: allow
-            port: '9100'
-            proto: tcp
-            comment: "prometheus-node-exporter"
-
-        - name: Allow SSH on 22/tcp
-          ansible.builtin.ufw:
-            rule: allow
-            port: '22'
-            proto: tcp
-            comment: "SSH"
-        
-        - name: Allow NFS on 2049/tcp
-          ansible.builtin.ufw:
-            rule: allow
-            port: '2049'
-            proto: tcp
-            comment: "NFS"
+            port: "{{ item.port }}"
+            proto: "{{ item.proto }}"
+            comment: "{{ item.comment }}"
+          loop:
+            - { port: '9100', proto: 'tcp', comment: 'prometheus-node-exporter' }
+            - { port: '22', proto: 'tcp', comment: 'SSH' }
+            - { port: '2049', proto: 'tcp', comment: 'NFS' }
   
         - name: Enable UFW
           ansible.builtin.ufw:
             state: enabled
-
 
     ############################################################
     - name: Networking
@@ -178,57 +152,77 @@
     - name: MOTD
       become: true
       block:
+        - name: Check if MOTD file exists
+          ansible.builtin.stat:
+            path: /etc/motd
+          register: motd_file
 
-        - name: Remove all files in /etc/update-motd.d
-          ansible.builtin.shell: rm -rf /etc/update-motd.d/*
+        - name: Make all files in /etc/update-motd.d non-executable if MOTD doesn't exist
+          ansible.builtin.command: chmod -x /etc/update-motd.d/*
+          when: not motd_file.stat.exists
+          args:
+            removes: /etc/motd # Runs only if /etc/motd is not already present, can be omitted if you prefer to always run
 
-        - name: Download MOTD file
+        - name: Download MOTD file if it doesn't exist
           ansible.builtin.get_url:
             url: https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/motd
             dest: /etc/motd
+          when: not motd_file.stat.exists
 
     ############################################################
     - name: User Customizations
       become: false
       block:
+        - name: Check if Zsh is the default shell
+          ansible.builtin.shell: echo $SHELL
+          register: current_shell
+          changed_when: false
 
         - name: Change the admin's default shell to Zsh
           become: true
           ansible.builtin.shell: chsh -s $(which zsh) {{ admin_user }}
+          when: '"zsh" not in current_shell.stdout'
+
+        - name: Check if Oh My Zsh is installed
+          ansible.builtin.stat:
+            path: "/home/{{ admin_user }}/.oh-my-zsh"
+          register: ohmyzsh_installed
 
         - name: Download Oh My Zsh install script
           ansible.builtin.get_url:
             url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
             dest: "/tmp/install_oh_my_zsh.sh"
             mode: "0755"
+          when: not ohmyzsh_installed.stat.exists
 
         - name: Install Oh My Zsh
           ansible.builtin.shell: sh /tmp/install_oh_my_zsh.sh --unattended
           args:
-            creates: ~/.oh-my-zsh
+            creates: "/home/{{ admin_user }}/.oh-my-zsh"
+          when: not ohmyzsh_installed.stat.exists
 
         - name: Install Zsh plugins
           ansible.builtin.git:
             repo: "{{ item.repo }}"
-            dest: "{{ item.dest }}"
+            dest: "/home/{{ admin_user }}{{ item.dest }}"
           loop:
             - {
                 repo: "https://github.com/zsh-users/zsh-autosuggestions",
-                dest: "~/.oh-my-zsh/custom/plugins/zsh-autosuggestions",
+                dest: "/.oh-my-zsh/custom/plugins/zsh-autosuggestions",
               }
             - {
                 repo: "https://github.com/zsh-users/zsh-syntax-highlighting.git",
-                dest: "~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting",
+                dest: "/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting",
               }
+          when: not ohmyzsh_installed.stat.exists
 
         - name: Update Zsh configuration
-          ansible.builtin.shell: "{{ item }}"
+          ansible.builtin.shell: "{{ item.cmd }}"
           loop:
-            - sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' ~/.zshrc
-            - sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="daveverwer"/' ~/.zshrc
-            - echo "emulate sh -c 'source /etc/profile'" | cat - ~/.zshrc > temp && mv temp ~/.zshrc
-          args:
-            warn: false
+            - { cmd: "sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' /home/{{ admin_user }}/.zshrc", args: { warn: false } }
+            - { cmd: "sed -i 's/ZSH_THEME=\"robbyrussell\"/ZSH_THEME=\"daveverwer\"/' /home/{{ admin_user }}/.zshrc", args: { warn: false } }
+            - { cmd: "echo \"emulate sh -c 'source /etc/profile'\" | cat - /home/{{ admin_user }}/.zshrc > temp && mv temp /home/{{ admin_user }}/.zshrc", args: { warn: false } }
+          when: not ohmyzsh_installed.stat.exists
 
     ############################################################
     - name: Mount Points and environment management 
@@ -239,41 +233,36 @@
           ansible.builtin.file:
             path: "{{ item }}"
             state: directory
-            mode: '0755' # or any other mode you deem appropriate
+            mode: '0755'
           loop:
             - /storage/home
             - /storage/projects
             - /storage/sw
             - /storage/spack
 
-        - name: Create slurm user
-          ansible.builtin.user:
-            name: slurm
-            comment: "Create Slurm User"
-            uid: 1001
-            group: slurm
-            createhome: yes
-            home: /var/lib/slurm
-            shell: /bin/bash
+        - name: Ensure groups exist with specific GIDs
+          ansible.builtin.group:
+            name: "{{ item.name }}"
+            gid: "{{ item.gid }}"
+            state: present
+          loop:
+            - { name: "slurm", gid: "1001" }
+            - { name: "swmanager", gid: "1002" }
+            - { name: "filemanager", gid: "1003" }
 
-        - name: Create software manager user
+        - name: Create users without home directories
           ansible.builtin.user:
-            name: swmanager
-            comment: "Software Manager User"
-            uid: 1002
-            group: swmanager
-            createhome: yes
-            home: /home/swmanager
-            shell: /bin/bash
-
-        - name: Create file manager user
-          ansible.builtin.user:
-            name: filemanager
-            comment: "File Manager User"
-            uid: 1003
-            group: filemanager
+            name: "{{ item.name }}"
+            comment: "{{ item.comment }}"
+            uid: "{{ item.uid }}"
+            group: "{{ item.group }}"
             createhome: no
-            system: yes
+            system: "{{ item.system | default(omit) }}"
+          loop:
+            - { name: "slurm", comment: "Slurm User", uid: "1001", group: "slurm" }
+            - { name: "swmanager", comment: "Software Manager User", uid: "1002", group: "swmanager" }
+            - { name: "filemanager", comment: "File Manager User", uid: "1003", group: "filemanager", system: yes }
+
 
         - name: Change ownership of /storage/sw to swmanager
           ansible.builtin.file:
