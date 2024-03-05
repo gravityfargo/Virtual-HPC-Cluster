@@ -33,9 +33,10 @@ sudo chmod 774 /etc/ansible && \
 sudo chmod 664 /etc/ansible/hosts
 
 ######################################
+# Start here if using an existing ansible controller
+######################################
 # Prepare Ansible
 ######################################
-# if you have more than one physical server add them to the inventory file
 tee /etc/ansible/hosts <<EOF
 [cluster]
 $STORAGE_SERVER_HOSTNAME
@@ -85,6 +86,9 @@ ansible-playbook create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$HEAD_SERVER_IP"
 
+# VMs are not created or ran by root, so session needs to be specified.
+# virsh -c qemu:///session list --all
+
 ######################################
 # Delete VMs
 ######################################
@@ -104,5 +108,7 @@ ansible-playbook prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME
 ansible-playbook prepare-base-os.yml -e "target_hostname=$HEAD_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 
 
-ansible-playbook prepare-storage-server.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" \
+ansible-playbook prepare-storage-server.yml \
+-e "storage_server_hostname=$LOGIN_SERVER_HOSTNAME" \
 -e "subnet=$SUBNET" \
+-e "lmod_version=$LMOD_VERSION"
