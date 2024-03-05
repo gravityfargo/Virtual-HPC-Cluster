@@ -159,8 +159,6 @@
         - name: Make all files in /etc/update-motd.d non-executable if MOTD doesn't exist
           ansible.builtin.shell: chmod -x /etc/update-motd.d/*
           when: not motd_file.stat.exists
-          args:
-            warn: false # Add this line to disable the warning about using 'shell' instead of 'command'
 
         - name: Download MOTD file if it doesn't exist
           ansible.builtin.get_url:
