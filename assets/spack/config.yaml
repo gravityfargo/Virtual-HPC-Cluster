@@ -1,0 +1,39 @@
+config:
+  install_tree:
+    root: /storage/sw/spack
+    projections:
+      all: "{architecture}/{compiler.name}-{compiler.version}/{name}-{version}-{hash}"
+  template_dirs:
+    - $spack/share/spack/templates
+  license_dir: $spack/etc/spack/licenses
+  build_stage:
+    - $user_cache_path/stage
+  test_stage: $user_cache_path/test
+  source_cache: $spack/var/spack/cache
+  misc_cache: $user_cache_path/cache
+  connect_timeout: 10
+  verify_ssl: true
+  suppress_gpg_warnings: false
+  install_missing_compilers: false
+  checksum: true
+  deprecated: false
+  dirty: false
+  build_language: C
+  locks: true
+  url_fetch_method: urllib
+  ccache: false
+  concretizer: clingo
+  db_lock_timeout: 60
+  package_lock_timeout: null
+  shared_linking:
+    type: rpath
+    bind: false
+  allow_sgid: true
+  install_status: true
+  binary_index_ttl: 600
+  flags:
+    keep_werror: "none"
+  aliases:
+    concretise: concretize
+    containerise: containerize
+    rm: remove
