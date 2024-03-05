@@ -95,3 +95,13 @@
             recurse: true
 
     ############################################################
+
+    - name: Install Spack
+      become: true
+      block:
+
+        - name: Download and extract Spack
+          ansible.builtin.unarchive:
+            src: "https://github.com/spack/spack/archive/refs/tags/releases/latest.tar.gz"
+            dest: "/tmp"
+            remote_src: true
