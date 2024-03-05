@@ -3,6 +3,8 @@
 ######################################
 export ADMIN_USER=""
 export SSH_PUBLIC_KEY_PERSONAL=""
+export SUBNET=""
+export LMOD_VERSION="8.7.34"
 
 export STORAGE_SERVER_FQDN=""
 export STORAGE_SERVER_HOSTNAME=""
