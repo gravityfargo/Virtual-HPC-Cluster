@@ -8,12 +8,11 @@
     - name: Setup Packages
       become: true
       block:
-
         - name: Update and upgrade all packages
           ansible.builtin.apt:
             update_cache: yes
             upgrade: dist
-            cache_valid_time: 3600 # Cache valid for 1 hour
+            cache_valid_time: 3600
 
         - name: Remove unwanted packages
           ansible.builtin.apt:
@@ -38,7 +37,7 @@
             - auditd
             - whois
             - prometheus-node-exporter
-            - lua5.3 # start of lmod dependencies
+            - lua5.3
             - lua-bit32:amd64
             - lua-posix:amd64
             - lua-posix-dev
@@ -49,16 +48,15 @@
             - tcl8.6
             - tcl8.6-dev:amd64
             - libtcl8.6:amd64
-            - gfortran # start of spack dependencies 
+            - gfortran
             - gnupg2
-            - python3-pip 
+            - python3-pip
             - libpmix2
 
     ############################################################
     - name: Services
       become: true
       block:
-
         - name: Set timezone and enable NTP
           ansible.builtin.timezone:
             name: America/New_York
@@ -69,16 +67,15 @@
             enabled: "{{ item.enabled }}"
             state: "{{ item.state }}"
           loop:
-            - { name: 'systemd-timesyncd', enabled: yes, state: started }
-            - { name: 'prometheus-node-exporter', enabled: yes, state: started }
-            - { name: 'auditd', enabled: yes, state: started }
-            - { name: 'motd-news', enabled: no, state: stopped }
+            - { name: "systemd-timesyncd", enabled: yes, state: started }
+            - { name: "prometheus-node-exporter", enabled: yes, state: started }
+            - { name: "auditd", enabled: yes, state: started }
+            - { name: "motd-news", enabled: no, state: stopped }
 
     ############################################################
     - name: Firewall
       become: true
       block:
-
         - name: Configure UFW rules
           ansible.builtin.ufw:
             rule: allow
@@ -86,10 +83,14 @@
             proto: "{{ item.proto }}"
             comment: "{{ item.comment }}"
           loop:
-            - { port: '9100', proto: 'tcp', comment: 'prometheus-node-exporter' }
-            - { port: '22', proto: 'tcp', comment: 'SSH' }
-            - { port: '2049', proto: 'tcp', comment: 'NFS' }
-  
+            - {
+                port: "9100",
+                proto: "tcp",
+                comment: "prometheus-node-exporter",
+              }
+            - { port: "22", proto: "tcp", comment: "SSH" }
+            - { port: "2049", proto: "tcp", comment: "NFS" }
+
         - name: Enable UFW
           ansible.builtin.ufw:
             state: enabled
@@ -98,21 +99,19 @@
     - name: Networking
       become: true
       block:
-
         - name: Copy /etc/hosts from local to remote
           ansible.builtin.copy:
             src: /etc/hosts
             dest: /etc/hosts
             owner: root
             group: root
-            mode: '0644'
+            mode: "0644"
           become: true
 
     ############################################################
     - name: SSH Settings
       become: true
       block:
-
         - name: Disable mail in PAM
           ansible.builtin.lineinfile:
             path: /etc/pam.d/sshd
@@ -129,22 +128,22 @@
         - name: Disable Challenge-Response Authentication
           ansible.builtin.lineinfile:
             path: /etc/ssh/sshd_config
-            regexp: '^#?ChallengeResponseAuthentication yes'
-            line: 'ChallengeResponseAuthentication no'
+            regexp: "^#?ChallengeResponseAuthentication yes"
+            line: "ChallengeResponseAuthentication no"
           become: true
 
         - name: Disable Password Authentication
           ansible.builtin.lineinfile:
             path: /etc/ssh/sshd_config
-            regexp: '^#?PasswordAuthentication yes'
-            line: 'PasswordAuthentication no'
+            regexp: "^#?PasswordAuthentication yes"
+            line: "PasswordAuthentication no"
           become: true
 
         - name: Disable Root Login
           ansible.builtin.lineinfile:
             path: /etc/ssh/sshd_config
-            regexp: '^#?PermitRootLogin prohibit-password'
-            line: 'PermitRootLogin no'
+            regexp: "^#?PermitRootLogin prohibit-password"
+            line: "PermitRootLogin no"
           become: true
 
     ############################################################
@@ -216,75 +215,20 @@
         - name: Update Zsh configuration
           ansible.builtin.shell: "{{ item.cmd }}"
           loop:
-            - { cmd: "sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' /home/{{ admin_user }}/.zshrc", args: { warn: false } }
-            - { cmd: "sed -i 's/ZSH_THEME=\"robbyrussell\"/ZSH_THEME=\"daveverwer\"/' /home/{{ admin_user }}/.zshrc", args: { warn: false } }
-            - { cmd: "echo \"emulate sh -c 'source /etc/profile'\" | cat - /home/{{ admin_user }}/.zshrc > temp && mv temp /home/{{ admin_user }}/.zshrc", args: { warn: false } }
+            - {
+                cmd: "sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' /home/{{ admin_user }}/.zshrc",
+                args: { warn: false },
+              }
+            - {
+                cmd: 'sed -i ''s/ZSH_THEME="robbyrussell"/ZSH_THEME="daveverwer"/'' /home/{{ admin_user }}/.zshrc',
+                args: { warn: false },
+              }
+            - {
+                cmd: 'echo "emulate sh -c ''source /etc/profile''" | cat - /home/{{ admin_user }}/.zshrc > temp && mv temp /home/{{ admin_user }}/.zshrc',
+                args: { warn: false },
+              }
+            - {
+                cmd: 'echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc && echo "source ~/.variables.sh" >> ~/.zshrc && source ~/.zshrc',
+                args: { warn: false },
+              }
           when: not ohmyzsh_installed.stat.exists
-
-    ############################################################
-    - name: Mount Points and environment management 
-      become: true
-      block:
-
-        - name: Create necessary directories
-          ansible.builtin.file:
-            path: "{{ item }}"
-            state: directory
-            mode: '0755'
-          loop:
-            - /storage/home
-            - /storage/projects
-            - /storage/sw
-            - /storage/spack
-
-        - name: Ensure groups exist with specific GIDs
-          ansible.builtin.group:
-            name: "{{ item.name }}"
-            gid: "{{ item.gid }}"
-            state: present
-          loop:
-            - { name: "slurm", gid: "1001" }
-            - { name: "swmanager", gid: "1002" }
-            - { name: "filemanager", gid: "1003" }
-
-        - name: Create users without home directories
-          ansible.builtin.user:
-            name: "{{ item.name }}"
-            comment: "{{ item.comment }}"
-            uid: "{{ item.uid }}"
-            group: "{{ item.group }}"
-            createhome: no
-            system: "{{ item.system | default(omit) }}"
-          loop:
-            - { name: "slurm", comment: "Slurm User", uid: "1001", group: "slurm" }
-            - { name: "swmanager", comment: "Software Manager User", uid: "1002", group: "swmanager" }
-            - { name: "filemanager", comment: "File Manager User", uid: "1003", group: "filemanager", system: yes }
-
-
-        - name: Change ownership of /storage/sw to swmanager
-          ansible.builtin.file:
-            path: /storage/sw
-            owner: swmanager
-            group: swmanager
-            state: directory
-
-        - name: Change ownership of /storage/spack to swmanager
-          ansible.builtin.file:
-            path: /storage/spack
-            owner: swmanager
-            group: swmanager
-            state: directory
-
-        - name: Change ownership of /storage/projects to filemanager
-          ansible.builtin.file:
-            path: /storage/projects
-            owner: filemanager
-            group: filemanager
-            state: directory
-
-        - name: Change ownership of /storage/home to filemanager
-          ansible.builtin.file:
-            path: /storage/home
-            owner: filemanager
-            group: filemanager
-            state: directory
