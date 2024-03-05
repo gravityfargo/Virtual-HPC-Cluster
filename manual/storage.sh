@@ -30,3 +30,23 @@ module purge
 clearMT
 unset MODULEPATH
 module use /storage/sw/modules/linux-ubuntu22.04-x86_64/Core
+
+######################################
+# spack
+######################################
+sudo su - swmanager
+cd /tmp && wget https://github.com/spack/spack/releases/download/v0.21.0/spack-0.21.0.tar.gz
+tar -xzvf spack-0.21.0.tar.gz
+mv spack-0.21.0/* /storage/spack/
+echo "source /storage/spack/share/spack/setup-env.sh" >> ~/.bashrc
+source ~/.bashrc
+# for other users add them to the swmanager group and add the source line to their .bashrc/.zshrc
+vim /storage/spack/etc/spack/config.yaml
+# see storage\config.yaml
+vim /storage/spack/etc/spack/modules.yaml
+# see storage\modules.yaml
+# tells lmod where spack installed packages
+echo '/storage/sw/modules/linux-ubuntu22.04-x86_64/Core' > /storage/sw/lmod/lmod/init/.modulespath
+# example packages install
+spack install miniconda3 py-numpy py-tensorflow r-dplyr py-pandas tar
+reboot
