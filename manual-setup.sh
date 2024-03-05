@@ -110,3 +110,4 @@ sudo chown swmanager:swmanager /storage/spack
 sudo chown filemanager:filemanager /storage/projects
 sudo chown filemanager:filemanager /storage/home
 
+# Storage Server continues in scripts\storage-setup.sh
