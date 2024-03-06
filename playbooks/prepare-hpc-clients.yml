@@ -71,6 +71,7 @@
             uid: "{{ item.uid }}"
             group: "{{ item.group }}"
             home: "{{ item.home }}"
+            shell: /bin/bash
             createhome: no
           loop:
             - { name: "slurm", comment: "Slurm User", uid: "1001", group: "slurm", home: "/storage/home/slurm" }
