@@ -88,9 +88,6 @@ ansible-playbook create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
 -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
 -e "ip=$HEAD_SERVER_IP"
 
-# VMs are not created or ran by root, so session needs to be specified.
-# virsh -c qemu:///session list --all
-
 ######################################
 # Delete VMs
 ######################################
@@ -104,12 +101,16 @@ curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/pla
 ######################################
 # do not use the "all" as host until after running these commands for the first time.
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
+
 ansible-playbook prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$HEAD_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 
+######################################
+# Prepare the Storage Server
+######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-storage-server.yml -o ~/prepare-storage-server.yml
 
 ansible-playbook prepare-storage-server.yml \
@@ -118,4 +119,8 @@ ansible-playbook prepare-storage-server.yml \
 -e "lmod_version=$LMOD_VERSION" \
 -e "admin_user=$ADMIN_USER"
 
-# you will need to `sudo su spack` then `spack install tar` or something to get spack to work the first time.
+# you will need to `sudo su spack` then `spack install tar` or some package to get spack to work the first time.
+
+######################################
+# Prepare the Login, Worker, and Head Servers
+######################################
