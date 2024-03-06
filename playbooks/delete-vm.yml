@@ -14,6 +14,16 @@
       ansible.builtin.shell: virsh undefine {{ target_hostname }} --remove-all-storage
       ignore_errors: true
 
+    - name: Destroy Storage Pool
+      become: true
+      ansible.builtin.shell: virsh pool-destroy {{ target_hostname }}
+      ignore_errors: true
+
+    - name: Undefine Storage Pool
+      become: true
+      ansible.builtin.shell: virsh pool-undefine {{ target_hostname }}
+      ignore_errors: true
+
     - name: Delete the directory
       become: true
       ansible.builtin.file:
