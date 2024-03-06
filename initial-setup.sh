@@ -137,20 +137,16 @@ sudo virt-install \
 --graphics vnc,listen=0.0.0.0 --noautoconsole \
 --cloud-init user-data=user-data.yaml,meta-data=meta-data.yaml
 
-# virsh -c qemu:///session list --all
 
-virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
-virsh $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
-rm -rf /storage/vms/$MANAGEMENT_SERVER_HOSTNAME && \
-ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R "$MANAGEMENT_SERVER_HOSTNAME"
 
-virsh destroy $LOGIN_SERVER_HOSTNAME && \
-virsh undefine $LOGIN_SERVER_HOSTNAME --remove-all-storage && \
-rm -rf /storage/vms/$LOGIN_SERVER_HOSTNAME && \
-ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R "$LOGIN_SERVER_HOSTNAME"
+# virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
+# virsh $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
+# rm -rf /storage/vms/$MANAGEMENT_SERVER_HOSTNAME && \
+# ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R "$MANAGEMENT_SERVER_HOSTNAME"
+
 
 # wait for the VM to boot and then run the following commands
-scp ~/.variables.sh $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/
+scp /.variables.sh $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/
 
 
 # go to ansible-setup.sh for semi-automated setup of the rest of the cluster
