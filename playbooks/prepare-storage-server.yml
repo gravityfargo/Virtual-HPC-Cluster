@@ -5,6 +5,7 @@
   vars:
     subnet: "{{ subnet }}"
     lmod_version: "{{ lmod_version }}"
+    admin_user: "{{ admin_user }}"
   tasks:
     ############################################################
     - name: Install dependencies
@@ -29,27 +30,7 @@
         update_cache: yes
 
     ############################################################
-    - name: NFS
-      become: true
-      block:
-        - name: Enable NFS Kernel Server
-          ansible.builtin.systemd:
-            name: nfs-kernel-server
-            enabled: yes
-            state: started
-
-        - name: Add NFS export entries to /etc/exports
-          ansible.builtin.lineinfile:
-            path: /etc/exports
-            line: "{{ item }}"
-            create: yes
-          loop:
-            - "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
-
-        - name: Apply NFS exports
-          ansible.builtin.command: exportfs -a
-
-    ############################################################
+    # This section will be duplicated in the HPC Client setup
     - name: Mount Points and environment management 
       become: true
       block:
@@ -80,33 +61,33 @@
             comment: "{{ item.comment }}"
             uid: "{{ item.uid }}"
             group: "{{ item.group }}"
-            home: "/storage/home/{{ item.name }}"
+            home: "{{ item.home }}"
             createhome: yes
           loop:
-            - { name: "slurm", comment: "Slurm User", uid: "1001", group: "slurm" }
-            - { name: "spack", comment: "Software Manager User", uid: "1002", group: "spack" }
-            - { name: "filemanager", comment: "File Manager User", uid: "1003", group: "filemanager"}
+            - { name: "slurm", comment: "Slurm User", uid: "1001", group: "slurm", home: "/storage/home/slurm" }
+            - { name: "spack", comment: "Software Manager User", uid: "1002", group: "spack", home: "/storage/spack"}
+            - { name: "filemanager", comment: "File Manager User", uid: "1003", group: "filemanager", home: "/storage/home/filemanager"}
 
-        - name: Change ownership of /storage/software to spack
-          ansible.builtin.file:
-            path: /storage/software
-            owner: spack
-            group: spack
-            state: directory
+        - name: Add admin account to spack group
+          ansible.builtin.user:
+            name: "{{ admin_user }}"
+            groups: "{{ item }}"
+            append: true
+          loop:
+            - spack
+            - filemanager
+            - slurm
 
-        - name: Change ownership of /storage/projects to filemanager
+        - name: Change ownership 
           ansible.builtin.file:
-            path: /storage/projects
-            owner: filemanager
-            group: filemanager
+            path: "{{ item.path }}"
+            owner: "{{ item.owner }}"
+            group: "{{ item.group }}"
             state: directory
-
-        - name: Change ownership of /storage/home to filemanager
-          ansible.builtin.file:
-            path: /storage/home
-            owner: filemanager
-            group: filemanager
-            state: directory
+          loop:
+            - { path: "/storage/home", owner: "filemanager", group: "filemanager" }
+            - { path: "/storage/projects", owner: "filemanager", group: "filemanager" }
+            - { path: "/storage/software", owner: "spack", group: "spack" }
 
     ############################################################
     - name: lmod
@@ -138,11 +119,11 @@
             line: 'MODULEPATH="/storage/software/modules/linux-ubuntu22.04-x86_64/Core"'
             create: true
 
-        - name: Change ownership of /storage/software to swmanager
+        - name: Change ownership of /storage/software to spack
           ansible.builtin.file:
             path: /storage/software
-            owner: swmanager
-            group: swmanager
+            owner: spack
+            group: spack
             state: directory
             recurse: true
 
@@ -170,23 +151,16 @@
 
         - name: Change the home directory of a user
           ansible.builtin.user:
-            name: swmanager
+            name: spack
             home: /storage/spack
             move_home: yes
-          when: spack_executable.stat.exists == False
-
-        - name: Copy bashrc to /storage/spack
-          ansible.builtin.copy:
-            src: /home/{{ admin-user }}/.bashrc
-            dest: /storage/spack/.bashrc
-            owner: swmanager
-            group: swmanager
-            mode: "0644"
           when: spack_executable.stat.exists == False
 
         - name: Modify Configs
           ansible.builtin.shell: |
             echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/spack/.bashrc
+            echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/{{ admin_user }}/.bashrc
+            echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/{{ admin_user }}/.zshrc
             echo '/storage/software/modules/linux-ubuntu22.04-x86_64/Core' > /storage/software/lmod/lmod/init/.modulespath
           when: spack_executable.stat.exists == False
 
@@ -198,13 +172,34 @@
             - { file: "config.yaml", dest: "/storage/spack/etc/spack/config.yaml" }
             - { file: "compilers.yaml", dest: "/storage/spack/etc/spack/compilers.yaml" }
             - { file: "modules.yaml", dest: "/storage/spack/etc/spack/modules.yaml" }
-          when: not motd_file.stat.exists
+          when: spack_executable.stat.exists == False
 
-        - name: Change ownership of /storage/spack to swmanager
+        - name: Change ownership of /storage/spack to spack
           ansible.builtin.file:
             path: /storage/spack
-            owner: swmanager
-            group: swmanager
+            owner: spack
+            group: spack
             state: directory
             recurse: true
           when: spack_executable.stat.exists == False
+
+    ############################################################
+    - name: NFS
+      become: true
+      block:
+        - name: Enable NFS Kernel Server
+          ansible.builtin.systemd:
+            name: nfs-kernel-server
+            enabled: yes
+            state: started
+
+        - name: Add NFS export entries to /etc/exports
+          ansible.builtin.lineinfile:
+            path: /etc/exports
+            line: "{{ item }}"
+            create: yes
+          loop:
+            - "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
+
+        - name: Apply NFS exports
+          ansible.builtin.command: exportfs -a
