@@ -21,6 +21,7 @@ config:
   build_language: C
   locks: true
   url_fetch_method: urllib
+  build_jobs: 4
   ccache: false
   concretizer: clingo
   db_lock_timeout: 60
