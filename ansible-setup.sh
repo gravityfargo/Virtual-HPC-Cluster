@@ -4,22 +4,13 @@
 ######################################
 sudo apt update -y && sudo apt -y upgrade && \
 sudo apt install -y zsh git curl wget whois
-
-echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc && \
-echo "source ~/.variables.sh" >> ~/.zshrc && source ~/.zshrc
+chmod 600 ~/variables.sh
+echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc
 
 sudo sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
 sudo systemctl restart sshd
 
 sudo touch /etc/cloud/cloud-init.disabled
-
-sudo tee -a /etc/hosts <<EOF
-$STORAGE_SERVER_IP $STORAGE_SERVER_FQDN $STORAGE_SERVER_HOSTNAME
-$MANAGEMENT_SERVER_IP $MANAGEMENT_SERVER_FQDN $MANAGEMENT_SERVER_HOSTNAME
-$LOGIN_SERVER_IP $LOGIN_SERVER_FQDN $LOGIN_SERVER_HOSTNAME
-$WORKER_SERVER_IP $WORKER_SERVER_FQDN $WORKER_SERVER_HOSTNAME
-$HEAD_SERVER_IP $HEAD_SERVER_FQDN $HEAD_SERVER_HOSTNAME
-EOF
 
 sudo apt-add-repository ppa:ansible/ansible && \
 sudo apt install -y ansible
@@ -34,6 +25,17 @@ sudo chmod 664 /etc/ansible/hosts
 
 ######################################
 # Start here if using an existing ansible controller
+######################################
+# Networking
+######################################
+sudo tee -a /etc/hosts <<EOF
+$STORAGE_SERVER_IP $STORAGE_SERVER_FQDN $STORAGE_SERVER_HOSTNAME
+$MANAGEMENT_SERVER_IP $MANAGEMENT_SERVER_FQDN $MANAGEMENT_SERVER_HOSTNAME
+$LOGIN_SERVER_IP $LOGIN_SERVER_FQDN $LOGIN_SERVER_HOSTNAME
+$WORKER_SERVER_IP $WORKER_SERVER_FQDN $WORKER_SERVER_HOSTNAME
+$HEAD_SERVER_IP $HEAD_SERVER_FQDN $HEAD_SERVER_HOSTNAME
+EOF
+
 ######################################
 # Prepare Ansible
 ######################################
@@ -100,6 +102,7 @@ curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/pla
 ######################################
 # Prepare the base OSes
 ######################################
+# do not use the "all" as host until after running these commands for the first time.
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
 ansible-playbook prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
