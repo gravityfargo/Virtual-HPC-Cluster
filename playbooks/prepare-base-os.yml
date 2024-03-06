@@ -235,7 +235,7 @@
                 args: { warn: false },
               }
             - {
-                cmd: 'echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc && echo "source /.variables.sh" >> ~/.zshrc && source ~/.zshrc',
+                cmd: 'echo "source /.variables.sh" >> /home/{{ admin_user }}/.bashrc && echo "source /.variables.sh" >> /home/{{ admin_user }}/.zshrc',
                 args: { warn: false },
               }
           when: not ohmyzsh_installed.stat.exists
