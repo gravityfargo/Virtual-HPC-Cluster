@@ -106,7 +106,14 @@
             owner: root
             group: root
             mode: "0644"
-          become: true
+            
+        - name: Copy variables from local to remote
+          ansible.builtin.copy:
+            src: /.variables.sh
+            dest: /.variables.sh
+            owner: "{{ admin_user }}"
+            group: "{{ admin_user }}"
+            mode: "0600"
 
     ############################################################
     - name: SSH Settings
