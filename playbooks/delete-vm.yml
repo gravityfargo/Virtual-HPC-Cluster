@@ -5,16 +5,19 @@
     target_hostname: "{{ target_hostname }}"
   tasks:
     - name: Destroy VM
+      become: true
       ansible.builtin.shell: virsh destroy {{ target_hostname }}
       ignore_errors: true
 
     - name: Undefine VM
+      become: true
       ansible.builtin.shell: virsh undefine {{ target_hostname }} --remove-all-storage
       ignore_errors: true
 
     - name: Delete the directory
       ansible.builtin.file:
-        path: "/storage/vms/{{ target_hostname }}"
+        become: true
+        path: "/vms/{{ target_hostname }}"
         state: absent
       ignore_errors: true
 
