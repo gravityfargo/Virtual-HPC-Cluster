@@ -15,8 +15,8 @@
       ignore_errors: true
 
     - name: Delete the directory
+      become: true
       ansible.builtin.file:
-        become: true
         path: "/vms/{{ target_hostname }}"
         state: absent
       ignore_errors: true
