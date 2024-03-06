@@ -155,8 +155,7 @@
           when: spack_executable.stat.exists == False
 
         - name: Move package to /storage/spack
-          ansible.builtin.shell: |
-            mv /tmp/spack-releases-latest/* /storage/spack
+          ansible.builtin.shell: mv /tmp/spack-releases-latest/* /storage/spack
           when: spack_executable.stat.exists == False
 
         - name: Change the home directory of a user
@@ -167,11 +166,12 @@
           when: spack_executable.stat.exists == False
 
         - name: Modify Configs
-          ansible.builtin.shell: |
-            echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/spack/.bashrc
-            echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/{{ admin_user }}/.bashrc
-            echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/{{ admin_user }}/.zshrc
-            echo '/storage/software/modules/linux-ubuntu22.04-x86_64/Core' > /storage/software/lmod/lmod/init/.modulespath
+          ansible.builtin.shell: "{{ item }}"
+          loop:
+            - echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/spack/.bashrc
+            - echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/{{ admin_user }}/.bashrc
+            - echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/{{ admin_user }}/.zshrc
+            - echo '/storage/software/modules/linux-ubuntu22.04-x86_64/Core' > /storage/software/lmod/lmod/init/.modulespath
           when: spack_executable.stat.exists == False
 
         - name: Download config files
@@ -193,6 +193,11 @@
             recurse: true
           when: spack_executable.stat.exists == False
 
+        - name: Install a package with no dependencies to initialize Spack
+          become: true
+          become_user: spack
+          shell: spack install gmake
+
     ############################################################
     - name: NFS
       become: true
@@ -212,4 +217,4 @@
             - "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
 
         - name: Apply NFS exports
-          ansible.builtin.command: exportfs -a
+          ansible.builtin.shell: exportfs -a
