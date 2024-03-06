@@ -3,7 +3,7 @@ modules:
     enable:
       - lmod
     roots:
-      lmod: /storage/sw/modules
+      lmod: /storage/software/modules
     lmod:
       hash_length: 0
       hierarchy:

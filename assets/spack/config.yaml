@@ -1,6 +1,6 @@
 config:
   install_tree:
-    root: /storage/sw/spack
+    root: /storage/software/spack
     projections:
       all: "{architecture}/{compiler.name}-{compiler.version}/{name}-{version}-{hash}"
   template_dirs:
