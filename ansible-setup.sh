@@ -110,8 +110,12 @@ ansible-playbook prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 ansible-playbook prepare-base-os.yml -e "target_hostname=$HEAD_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
 
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-storage-server.yml -o ~/prepare-storage-server.yml
 
 ansible-playbook prepare-storage-server.yml \
 -e "storage_server_hostname=$LOGIN_SERVER_HOSTNAME" \
 -e "subnet=$SUBNET" \
--e "lmod_version=$LMOD_VERSION"
+-e "lmod_version=$LMOD_VERSION" \
+-e "admin_user=$ADMIN_USER"
+
+# you will need to `sudo su spack` then `spack install tar` or something to get spack to work the first time.
