@@ -129,3 +129,15 @@ sudo chown filemanager:filemanager /storage/projects
 sudo chown filemanager:filemanager /storage/home
 
 # Storage Server continues in scripts\storage-setup.sh
+
+######################################
+# spack/lmod setup env
+######################################
+sudo su swmanager -
+# do the Convience / Customizations section if you want
+echo "source /storage/spack/share/spack/setup-env.sh" >> ~/.bashrc
+exit
+# only the swmanager user has access to spack.
+
+echo 'MODULEPATH="/storage/sw/modules/linux-ubuntu22.04-x86_64/Core"' | sudo tee -a /etc/environment > /dev/null
+sudo ln -s /storage/sw/lmod/lmod/init/profile /etc/profile.d/z00_lmod.sh
