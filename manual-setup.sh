@@ -7,14 +7,14 @@
 ######################################
 # Prepare the host
 ######################################
-sudo apt update -y && sudo apt upgrade -y
-
+sudo apt update -y && sudo apt -y upgrade && \
 sudo apt install -y zsh git curl wget whois
 
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/variables.sh
+chmod 600 /.variables.sh
+echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
 
-echo "source ~/variables.sh" >> ~/.bashrc && source ~/.bashrc
-echo "source ~/variables.sh" >> ~/.zshrc && source ~/.zshrc
+sudo touch /etc/cloud/cloud-init.disabled
 
 ######################################
 # Setup Packages
@@ -64,23 +64,40 @@ EOF
 ######################################
 # SSH Settings
 ######################################
+
+## V Management Only V
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
+SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub) && \
+echo export SSH_PUBLIC_KEY_MGMT=\"$SSH_KEY_CONTENT\" >> ~/.variables.sh && \
+source ~/.bashrc
+
+echo $SSH_PUBLIC_KEY_MGMT >> ~/.ssh/authorized_keys
+
+ssh-keyscan $STORAGE_SERVER_HOSTNAME >> ~/.ssh/known_hosts && \
+ssh-keyscan $MANAGEMENT_SERVER_HOSTNAME >> ~/.ssh/known_hosts
+
+ssh-copy-id $STORAGE_SERVER_HOSTNAME
+## ^ Management Only ^
+
 sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 sudo sed -i '/session[ \t]\+optional[ \t]\+pam_mail.so/s/^/#/' /etc/pam.d/sshd # diable mail message
 sudo sed -i 's/#PrintLastLog yes/PrintLastLog no/' /etc/ssh/sshd_config # disable last logged in message
 sudo sed -i '/^#ChallengeResponseAuthentication yes/c\ChallengeResponseAuthentication no' /etc/ssh/sshd_config # disable challenge-response authentication
 sudo sed -i '/^#PasswordAuthentication yes/c\PasswordAuthentication no' /etc/ssh/sshd_config # disable password logins
 sudo sed -i '/^#PermitRootLogin prohibit-password/c\PermitRootLogin no' /etc/ssh/sshd_config # disallow root login entirely
+sudo sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 sudo systemctl reload ssh
 
 ######################################
 # MOTD
 ######################################
-sudo rm -rf /etc/update-motd.d/* # remove stock dynamic motds
+sudo rm -rf /etc/update-motd.d/*
 sudo curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/motd -o /etc/motd
 
 ######################################
 # User Shell Customizations
 ######################################
+
 sudo chsh -s $(which zsh) $USER # change defualt shell to zsh
 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
@@ -93,20 +110,21 @@ sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' 
 sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="daveverwer"/' ~/.zshrc # change theme
 echo "emulate sh -c 'source /etc/profile'" | cat - ~/.zshrc > temp && mv temp ~/.zshrc # login session initialisation - emulated POSIX compatability for zsh
 
-source ~/.zshrc
+echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc && \
+echo "source ~/.variables.sh" >> ~/.zshrc && source ~/.zshrc
 
 ######################################
 # Mount Points and environment management 
 ######################################
-sudo mkdir -p /storage/home /storage/projects /storage/sw /storage/spack # create nessesary mount points
+sudo mkdir -p /storage/home /storage/projects /storage/software /storage/spack # create nessesary mount points
 
 sudo useradd -m -d /var/lib/slurm -u 1001 -s /bin/bash -U slurm # dedicated slurm user
 sudo useradd -m -d /home/swmanager -u 1002 -s /bin/bash -U swmanager
 sudo useradd -M -u 1003 filemanager
 
 
-sudo chown swmanager:swmanager /storage/sw
-sudo chown swmanager:swmanager /storage/spack
+sudo chown spack:spack /storage/software
+sudo chown spack:spack /storage/spack
 sudo chown filemanager:filemanager /storage/projects
 sudo chown filemanager:filemanager /storage/home
 
