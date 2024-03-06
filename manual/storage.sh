@@ -32,7 +32,7 @@ mv spack-0.21.0/* /storage/spack/
 echo "source /storage/spack/share/spack/setup-env.sh" >> ~/.bashrc
 source ~/.bashrc
 
-curl ttps://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/spack/config.yaml -o /storage/spack/etc/spack/config.yaml
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/spack/config.yaml -o /storage/spack/etc/spack/config.yaml
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/spack/modules.yaml -o /storage/spack/etc/spack/modules.yaml
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/spack/compilers.yaml -o /storage/spack/etc/spack/compilers.yaml
 vim /storage/spack/etc/spack/modules.yaml
