@@ -7,18 +7,6 @@
     lmod_version: "{{ lmod_version }}"
   tasks:
     ############################################################
-    - name: Create necessary directories
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: directory
-        mode: "0755"
-      loop:
-        - /storage/home
-        - /storage/projects
-        - /storage/sw
-        - /storage/spack
-
-    ############################################################
     - name: Install dependencies
       ansible.builtin.apt:
         name:
@@ -27,6 +15,16 @@
           - libreadline-dev
           - nfs-kernel-server
           - bc
+          - gcc
+          - g++
+          - gfortran
+          - clang
+          - gcc-10
+          - g++-10
+          - gfortran-10
+          - gcc-12
+          - g++-12
+          - gfortran-12
         state: present
         update_cache: yes
 
@@ -34,7 +32,6 @@
     - name: NFS
       become: true
       block:
-
         - name: Enable NFS Kernel Server
           ansible.builtin.systemd:
             name: nfs-kernel-server
@@ -47,19 +44,74 @@
             line: "{{ item }}"
             create: yes
           loop:
-            - "/storage/projects  {{ subnet }}(rw,sync,no_subtree_check)"
-            - "/storage/home   {{ subnet }}(rw,sync,no_subtree_check)"
-            - "/storage/sw    {{ subnet }}(rw,sync,no_subtree_check)"
-            - "/storage/spack   {{ subnet }}(rw,sync,no_subtree_check)"
+            - "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
 
         - name: Apply NFS exports
           ansible.builtin.command: exportfs -a
 
     ############################################################
-    - name: lmod
+    - name: Mount Points and environment management 
       become: true
       block:
 
+        - name: Create necessary directories
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: directory
+            mode: '0755'
+          loop:
+            - /storage/home
+            - /storage/projects
+            - /storage/software
+
+        - name: Ensure groups exist with specific GIDs
+          ansible.builtin.group:
+            name: "{{ item.name }}"
+            gid: "{{ item.gid }}"
+            state: present
+          loop:
+            - { name: "slurm", gid: "1001" }
+            - { name: "spack", gid: "1002" }
+            - { name: "filemanager", gid: "1003" }
+
+        - name: Create users with home directories in /storage/home
+          ansible.builtin.user:
+            name: "{{ item.name }}"
+            comment: "{{ item.comment }}"
+            uid: "{{ item.uid }}"
+            group: "{{ item.group }}"
+            home: "/storage/home/{{ item.name }}"
+            createhome: yes
+          loop:
+            - { name: "slurm", comment: "Slurm User", uid: "1001", group: "slurm" }
+            - { name: "spack", comment: "Software Manager User", uid: "1002", group: "spack" }
+            - { name: "filemanager", comment: "File Manager User", uid: "1003", group: "filemanager"}
+
+        - name: Change ownership of /storage/software to spack
+          ansible.builtin.file:
+            path: /storage/software
+            owner: spack
+            group: spack
+            state: directory
+
+        - name: Change ownership of /storage/projects to filemanager
+          ansible.builtin.file:
+            path: /storage/projects
+            owner: filemanager
+            group: filemanager
+            state: directory
+
+        - name: Change ownership of /storage/home to filemanager
+          ansible.builtin.file:
+            path: /storage/home
+            owner: filemanager
+            group: filemanager
+            state: directory
+
+    ############################################################
+    - name: lmod
+      become: true
+      block:
         - name: Download and extract Lmod
           ansible.builtin.unarchive:
             src: "https://github.com/TACC/Lmod/archive/refs/tags/{{ lmod_version }}.tar.gz"
@@ -69,26 +121,26 @@
         - name: Install Lmod
           ansible.builtin.shell: |
             cd /tmp/Lmod-{{ lmod_version }}
-            ./configure --prefix=/storage/sw
+            ./configure --prefix=/storage/software
             make install
           args:
-            creates: "/storage/sw/lmod"
+            creates: "/storage/software/lmod"
 
         - name: Create symbolic link for Lmod profile script
           ansible.builtin.file:
-            src: "/storage/sw/lmod/lmod/init/profile"
+            src: "/storage/software/lmod/lmod/init/profile"
             dest: /etc/profile.d/z00_lmod.sh
             state: link
 
         - name: Set MODULEPATH environment variable
           ansible.builtin.lineinfile:
             path: /etc/environment
-            line: 'MODULEPATH="/storage/sw/modules/linux-ubuntu22.04-x86_64/Core"'
+            line: 'MODULEPATH="/storage/software/modules/linux-ubuntu22.04-x86_64/Core"'
             create: true
 
-        - name: Change ownership of /storage/sw to swmanager
+        - name: Change ownership of /storage/software to swmanager
           ansible.builtin.file:
-            path: /storage/sw
+            path: /storage/software
             owner: swmanager
             group: swmanager
             state: directory
@@ -99,9 +151,60 @@
     - name: Install Spack
       become: true
       block:
+        - name: Check if Spack exists
+          ansible.builtin.stat:
+            path: /storage/spack/bin/spack
+          register: spack_executable
 
         - name: Download and extract Spack
           ansible.builtin.unarchive:
             src: "https://github.com/spack/spack/archive/refs/tags/releases/latest.tar.gz"
             dest: "/tmp"
             remote_src: true
+          when: spack_executable.stat.exists == False
+
+        - name: Move package to /storage/spack
+          ansible.builtin.shell: |
+            mv /tmp/spack-releases-latest/* /storage/spack
+          when: spack_executable.stat.exists == False
+
+        - name: Change the home directory of a user
+          ansible.builtin.user:
+            name: swmanager
+            home: /storage/spack
+            move_home: yes
+          when: spack_executable.stat.exists == False
+
+        - name: Copy bashrc to /storage/spack
+          ansible.builtin.copy:
+            src: /home/{{ admin-user }}/.bashrc
+            dest: /storage/spack/.bashrc
+            owner: swmanager
+            group: swmanager
+            mode: "0644"
+          when: spack_executable.stat.exists == False
+
+        - name: Modify Configs
+          ansible.builtin.shell: |
+            echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/spack/.bashrc
+            echo '/storage/software/modules/linux-ubuntu22.04-x86_64/Core' > /storage/software/lmod/lmod/init/.modulespath
+          when: spack_executable.stat.exists == False
+
+        - name: Download config files
+          ansible.builtin.get_url:
+            url: https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/assets/spack/{{ item.file }}
+            dest: "{{ item.dest }}"
+          loop:
+            - { file: "config.yaml", dest: "/storage/spack/etc/spack/config.yaml" }
+            - { file: "compilers.yaml", dest: "/storage/spack/etc/spack/compilers.yaml" }
+            - { file: "modules.yaml", dest: "/storage/spack/etc/spack/modules.yaml" }
+          when: not motd_file.stat.exists
+
+        - name: Change ownership of /storage/spack to swmanager
+          ansible.builtin.file:
+            path: /storage/spack
+            owner: swmanager
+            group: swmanager
+            state: directory
+            recurse: true
+          when: spack_executable.stat.exists == False
