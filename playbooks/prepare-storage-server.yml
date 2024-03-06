@@ -30,7 +30,6 @@
         update_cache: yes
 
     ############################################################
-    # This section will be duplicated in the HPC Client setup
     - name: Mount Points and environment management 
       become: true
       block:
