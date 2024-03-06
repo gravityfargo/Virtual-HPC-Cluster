@@ -6,14 +6,13 @@ sudo apt update -y && sudo apt upgrade -y && \
 sudo apt install -y zsh git curl wget whois
 
 # fill in this file with your relevant info. 
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o ~/.variables.sh
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o /.variables.sh
 
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
 SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub) && \
-echo export SSH_PUBLIC_KEY_STORAGE=\"$SSH_KEY_CONTENT\" >> ~/.variables.sh
+echo export SSH_PUBLIC_KEY_STORAGE=\"$SSH_KEY_CONTENT\" >> /.variables.sh
 
-echo "source ~/.variables.sh" >> ~/.bashrc && source ~/.bashrc && \
-echo "source ~/.variables.sh" >> ~/.zshrc && source ~/.zshrc
+echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
 
 ######################################
 # libvirt setup
@@ -79,12 +78,12 @@ sudo chmod 0660 /etc/qemu/bridge.conf && \
 sudo chmod u+s /usr/lib/qemu/qemu-bridge-helper && \
 sudo systemctl restart libvirtd
 
-sudo mkdir -p /storage/vms/isos && \
-sudo chmod 770 -R /storage/vms && \
-sudo chown -R libvirt-qemu:kvm /storage/vms && \
-sudo chmod g+s /storage/vms
+sudo mkdir -p /vms/isos && \
+sudo chmod 770 -R /vms && \
+sudo chown -R libvirt-qemu:kvm /vms && \
+sudo chmod g+s /vms
 
-curl https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -o /storage/vms/isos/jammy-server-cloudimg-amd64.img
+curl https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -o /vms/isos/jammy-server-cloudimg-amd64.img
 
 exit # log out and log back in
 
@@ -102,8 +101,8 @@ EOF
 ######################################
 # Intall the Management VM
 ######################################
-mkdir /storage/vms/$MANAGEMENT_SERVER_HOSTNAME && \
-cd /storage/vms/$MANAGEMENT_SERVER_HOSTNAME
+mkdir /vms/$MANAGEMENT_SERVER_HOSTNAME && \
+cd /vms/$MANAGEMENT_SERVER_HOSTNAME
 
 tee meta-data.yaml <<EOF
 instance-id: $MANAGEMENT_SERVER_HOSTNAME
@@ -125,9 +124,9 @@ users:
     
 EOF
 
-qemu-img create -b /storage/vms/isos/jammy-server-cloudimg-amd64.img -f qcow2 -F qcow2 $MANAGEMENT_SERVER_HOSTNAME-base.img 40G
+qemu-img create -b /vms/isos/jammy-server-cloudimg-amd64.img -f qcow2 -F qcow2 $MANAGEMENT_SERVER_HOSTNAME-base.img 40G
 
-virt-install \
+sudo virt-install \
 --name $MANAGEMENT_SERVER_HOSTNAME \
 --ram 4096 \
 --vcpus 4 \
@@ -138,10 +137,17 @@ virt-install \
 --graphics vnc,listen=0.0.0.0 --noautoconsole \
 --cloud-init user-data=user-data.yaml,meta-data=meta-data.yaml
 
-# virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
-# virsh undefine $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
-# rm -rf /storage/vms/$MANAGEMENT_SERVER_HOSTNAME && \
-# ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R "$MANAGEMENT_SERVER_HOSTNAME"
+# virsh -c qemu:///session list --all
+
+virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
+virsh $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
+rm -rf /storage/vms/$MANAGEMENT_SERVER_HOSTNAME && \
+ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R "$MANAGEMENT_SERVER_HOSTNAME"
+
+virsh destroy $LOGIN_SERVER_HOSTNAME && \
+virsh undefine $LOGIN_SERVER_HOSTNAME --remove-all-storage && \
+rm -rf /storage/vms/$LOGIN_SERVER_HOSTNAME && \
+ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R "$LOGIN_SERVER_HOSTNAME"
 
 # wait for the VM to boot and then run the following commands
 scp ~/.variables.sh $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/
