@@ -167,12 +167,24 @@
           when: spack_executable.stat.exists == False
 
         - name: Modify Configs
-          ansible.builtin.shell: "{{ item }}"
+          ansible.builtin.lineinfile:
+            path: "{{ item.path }}"
+            line: source /storage/spack/share/spack/setup-env.sh
+            create: yes
+            state: present
           loop:
-            - echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/spack/.bashrc
-            - echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/{{ admin_user }}/.bashrc
-            - echo "source /storage/spack/share/spack/setup-env.sh" >> /storage/{{ admin_user }}/.zshrc
-            - echo '/storage/software/modules/linux-ubuntu22.04-x86_64/Core' > /storage/software/lmod/lmod/init/.modulespath
+            - { path: "/storage/spack/.bashrc" }
+            - { path: "/home/{{ admin_user }}/.bashrc" }
+            - { path: "/home/{{ admin_user }}/.zshrc" }
+          when: spack_executable.stat.exists == False
+
+        - name: Set MODULEPATH for Lmod
+          ansible.builtin.copy:
+            dest: "/storage/software/lmod/lmod/init/.modulespath"
+            content: "/storage/software/modules/linux-ubuntu22.04-x86_64/Core\n"
+            owner: spack
+            group: spack
+            mode: '0644'
           when: spack_executable.stat.exists == False
 
         - name: Download config files
