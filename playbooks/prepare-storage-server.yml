@@ -175,7 +175,7 @@
             content: "/storage/software/modules/linux-ubuntu22.04-x86_64/Core\n"
             owner: spack
             group: spack
-            mode: '0644'
+            mode: '0755'
           when: spack_executable.stat.exists == False
 
         - name: Download config files
