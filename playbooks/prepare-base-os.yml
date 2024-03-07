@@ -211,5 +211,5 @@
             - { cmd: "sed -i 's/plugins=(git)/plugins=(zsh-autosuggestions zsh-syntax-highlighting)/' /home/{{ admin_user }}/.zshrc" }
             - { cmd: "sed -i 's/ZSH_THEME=\"robbyrussell\"/ZSH_THEME=\"daveverwer\"/' /home/{{ admin_user }}/.zshrc" }
             - { cmd: "echo \"emulate sh -c 'source /etc/profile'\" | cat - /home/{{ admin_user }}/.zshrc > /home/{{ admin_user }}/temp && mv /home/{{ admin_user }}/temp /home/{{ admin_user }}/.zshrc" }
-            - { cmd: "echo \"source /home/{{ admin_user }}/.variables.sh\" >> /home/{{ admin_user }}/.bashrc && echo \"source /home/{{ admin_user }}/.variables.sh\" >> /home/{{ admin_user }}/.zshrc" }
+            - { cmd: "echo \"source /.variables.sh\" >> /home/{{ admin_user }}/.bashrc && echo \"source /.variables.sh\" >> /home/{{ admin_user }}/.zshrc" }
           when: not ohmyzsh_installed.stat.exists
