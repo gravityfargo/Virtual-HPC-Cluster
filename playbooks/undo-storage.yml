@@ -1,0 +1,45 @@
+---
+- name: Reverse Storage Server Setup
+  hosts: "{{ storage_server_hostname }}"
+  become: true
+  vars:
+    subnet: "{{ subnet }}"
+  tasks:
+    - name: Delete users
+      ansible.builtin.user:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - slurm
+        - spack
+        - filemanager
+
+    - name: Delete groups
+      ansible.builtin.group:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - slurm
+        - spack
+        - filemanager
+
+    - name: Remove /storage directory
+      ansible.builtin.file:
+        path: /storage
+        state: absent
+
+    - name: Remove Lmod profile script symbolic link
+      ansible.builtin.file:
+        path: /etc/profile.d/z00_lmod.sh
+        state: absent
+
+    - name: Remove NFS export entries
+      ansible.builtin.lineinfile:
+        path: /etc/exports
+        line: "{{ item }}"
+        state: absent
+      loop:
+        - "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
+
+    - name: Apply NFS exports
+      ansible.builtin.command: exportfs -a
