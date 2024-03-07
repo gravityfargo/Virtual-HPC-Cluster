@@ -1,9 +1,10 @@
 ---
 - name: Prepare the HPC Clients
-  hosts: "{{ storage_server_hostname }}"
+  hosts: "{{ target_hostname }}"
   become: true
   vars:
     admin_user: "{{ admin_user }}"
+    target_hostname: "{{ target_hostname }}"
     storage_server_hostname: "{{ storage_server_hostname }}"
   tasks:
     ############################################################
