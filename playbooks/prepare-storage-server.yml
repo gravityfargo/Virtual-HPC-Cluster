@@ -8,6 +8,14 @@
     admin_user: "{{ admin_user }}"
   tasks:
     ############################################################
+    - name: Enable deb-src in sources.list
+      ansible.builtin.lineinfile:
+        path: /etc/apt/sources.list
+        regexp: '^# deb-src http://archive.ubuntu.com/ubuntu jammy main restricted'
+        line: 'deb-src http://archive.ubuntu.com/ubuntu jammy main restricted'
+        backrefs: yes
+        state: present
+
     - name: Install dependencies
       ansible.builtin.apt:
         name:
@@ -37,6 +45,7 @@
           - libtcl8.6:amd64
           - python3-pip
           - libpmix2
+          - lua-filesystem
         state: present
         update_cache: yes
 
