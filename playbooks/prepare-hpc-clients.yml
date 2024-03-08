@@ -33,13 +33,16 @@
     - name: NFS Mount
       become: true
       block:
-
         - name: Ensure NFS mount is configured in /etc/fstab
           ansible.builtin.lineinfile:
             path: /etc/fstab
             line: "{{ storage_server_hostname }}:/storage /storage nfs defaults 0 0"
             state: present
             create: yes
+
+        - name: Create storage directory
+          ansible.builtin.file:
+            path: /storage
 
         - name: Mount /storage if not already mounted
           ansible.builtin.mount:
@@ -51,10 +54,9 @@
           register: mount_status
 
     ############################################################
-    - name: slurm, spack, and filemanager Users
+    - name: Mount Points and environment management
       become: true
       block:
-
         - name: Ensure groups exist with specific GIDs
           ansible.builtin.group:
             name: "{{ item.name }}"
@@ -64,6 +66,7 @@
             - { name: "slurm", gid: "1001" }
             - { name: "spack", gid: "1002" }
             - { name: "filemanager", gid: "1003" }
+            - { name: "lmod", gid: "1004" }
 
         - name: Create users with home directories in /storage/home
           ansible.builtin.user:
@@ -71,15 +74,45 @@
             comment: "{{ item.comment }}"
             uid: "{{ item.uid }}"
             group: "{{ item.group }}"
+            groups: "{{ item.groups }}"
             home: "{{ item.home }}"
             shell: /bin/bash
-            createhome: no
+            createhome: false
           loop:
-            - { name: "slurm", comment: "Slurm User", uid: "1001", group: "slurm", home: "/storage/home/slurm" }
-            - { name: "spack", comment: "Software Manager User", uid: "1002", group: "spack", home: "/storage/spack"}
-            - { name: "filemanager", comment: "File Manager User", uid: "1003", group: "filemanager", home: "/storage/home/filemanager"}
+            - {
+                name: "slurm",
+                comment: "Slurm User",
+                uid: "1001",
+                group: "slurm",
+                groups: "",
+                home: "/storage/home/slurm",
+              }
+            - {
+                name: "spack",
+                comment: "Software Manager User",
+                uid: "1002",
+                group: "spack",
+                groups: "lmod",
+                home: "/storage/spack",
+              }
+            - {
+                name: "filemanager",
+                comment: "File Manager User",
+                uid: "1003",
+                group: "filemanager",
+                groups: "",
+                home: "/storage/home/filemanager",
+              }
+            - {
+                name: "lmod",
+                comment: "lmod user",
+                uid: "1004",
+                group: "lmod",
+                groups: "spack",
+                home: "/home/lmod",
+              }
 
-        - name: Add admin account to spack group
+        - name: Add admin account to groups
           ansible.builtin.user:
             name: "{{ admin_user }}"
             groups: "{{ item }}"
@@ -88,14 +121,12 @@
             - spack
             - filemanager
             - slurm
-      when: mount_status is succeeded
-
+            - lmod
 
     ############################################################
     - name: Lmod and Spack Environment Variables
       become: true
       block:
-
         - name: Create symbolic link for Lmod profile script
           ansible.builtin.file:
             src: "/storage/software/lmod/lmod/init/profile"
