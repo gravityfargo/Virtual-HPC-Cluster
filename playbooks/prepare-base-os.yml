@@ -57,6 +57,7 @@
             - { name: "prometheus-node-exporter", enabled: yes, state: started }
             - { name: "auditd", enabled: yes, state: started }
             - { name: "motd-news", enabled: no, state: stopped }
+            - { name: "systemd-networkd-wait-online", enabled: no, state: stopped }
 
     ############################################################
     - name: Firewall
