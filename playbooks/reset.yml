@@ -4,49 +4,69 @@
   become: true
   vars:
     target_hostname: "{{ target_hostname }}"
+    storage_server_hostname: "{{ storage_server_hostname }}"
     subnet: "{{ subnet }}"
   tasks:
-    - name: Delete users
-      ansible.builtin.user:
-        name: "{{ item }}"
-        state: absent
-      loop:
-        - slurm
-        - spack
-        - filemanager
-        - lmod
+    ############################################################
+    - name: Storage Server
+      when: target_hostname == storage_server_hostname
+      block:
+        - name: Remove NFS exports
+          ansible.builtin.lineinfile:
+            path: /etc/exports
+            line: "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
+            state: absent
+          register: nfs_exports
 
-    - name: Delete groups
-      ansible.builtin.group:
-        name: "{{ item }}"
-        state: absent
-      loop:
-        - slurm
-        - spack
-        - filemanager
-        - lmod
+        - name: Execute NFS exports
+          ansible.builtin.shell: exportfs -a
+          when: nfs_exports_change.changed
 
-    - name: Remove contents of /storage
-      ansible.builtin.shell: rm -rf /storage/*
+    ############################################################
+    - name: HPC Client
+      when: target_hostname != storage_server_hostname
+      block:
+        - name: Unmount /storage
+          ansible.builtin.mount:
+            path: /storage
+            state: unmounted
 
-    - name: lmod - remove profile script symbolic link
-      ansible.builtin.file:
-        path: /etc/profile.d/z00_lmod.sh
-        state: absent
+        - name: remove NFS mount from /etc/fstab
+          ansible.builtin.lineinfile:
+            path: /etc/fstab
+            line: "{{ storage_server_hostname }}:/storage /storage nfs defaults 0 0"
+            state: absent
 
-    - name: lmod - remove MODULEPATH environment variable setting
-      ansible.builtin.lineinfile:
-        path: /etc/environment
-        line: 'MODULEPATH="/storage/software/modules/linux-ubuntu22.04-x86_64/Core"'
-        state: absent
+    ############################################################
+    - name: General
+      block:
+        - name: Delete users
+          ansible.builtin.user:
+            name: "{{ item }}"
+            state: absent
+          loop:
+            - slurm
+            - spack
+            - filemanager
+            - lmod
 
-    - name: Storage Server - remove NFS exports
-      ansible.builtin.lineinfile:
-        path: /etc/exports
-        line: "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
-        state: absent
-      register: nfs_exports
+        - name: Delete groups
+          ansible.builtin.group:
+            name: "{{ item }}"
+            state: absent
+          loop:
+            - slurm
+            - spack
+            - filemanager
+            - lmod
 
-    - name: Storage Server - Execute NFS exports
-      ansible.builtin.shell: exportfs -a
-      when: nfs_exports_change.changed
+        - name: lmod - remove profile script symbolic link
+          ansible.builtin.file:
+            path: /etc/profile.d/z00_lmod.sh
+            state: absent
+
+        - name: lmod - remove MODULEPATH environment variable setting
+          ansible.builtin.lineinfile:
+            path: /etc/environment
+            line: 'MODULEPATH="/storage/software/modules/linux-ubuntu22.04-x86_64/Core"'
+            state: absent
