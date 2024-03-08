@@ -43,6 +43,7 @@
         - name: Create storage directory
           ansible.builtin.file:
             path: /storage
+            state: directory
 
         - name: Mount /storage if not already mounted
           ansible.builtin.mount:
@@ -51,7 +52,6 @@
             fstype: nfs
             opts: defaults
             state: mounted
-          register: mount_status
 
     ############################################################
     - name: Mount Points and environment management
