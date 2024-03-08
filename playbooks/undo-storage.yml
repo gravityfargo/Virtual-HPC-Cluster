@@ -13,6 +13,7 @@
         - slurm
         - spack
         - filemanager
+        - lmod
 
     - name: Delete groups
       ansible.builtin.group:
@@ -22,11 +23,10 @@
         - slurm
         - spack
         - filemanager
+        - lmod
 
-    - name: Remove /storage directory
-      ansible.builtin.file:
-        path: /storage
-        state: absent
+    - name: Remove contents /storage directory
+      ansible.builtin.shell: rm -rf /storage/*
 
     - name: Remove Lmod profile script symbolic link
       ansible.builtin.file:
