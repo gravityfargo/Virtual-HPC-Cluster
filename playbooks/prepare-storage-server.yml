@@ -44,20 +44,6 @@
     - name: Mount Points and environment management 
       become: true
       block:
-
-        - name: Create necessary directories
-          ansible.builtin.file:
-            path: "{{ item }}"
-            state: directory
-            mode: '0770'
-          loop:
-            - /storage/home
-            - /storage/projects
-            - /storage/software
-            - /storage/software/modules
-            - /storage/software/modules/linux-ubuntu22.04-x86_64
-            - /storage/software/modules/linux-ubuntu22.04-x86_64/Core
-
         - name: Ensure groups exist with specific GIDs
           ansible.builtin.group:
             name: "{{ item.name }}"
@@ -83,9 +69,9 @@
             - { name: "slurm", comment: "Slurm User", uid: "1001", group: "slurm", groups: "", home: "/storage/home/slurm" }
             - { name: "spack", comment: "Software Manager User", uid: "1002", group: "spack", groups: "lmod", home: "/storage/spack"}
             - { name: "filemanager", comment: "File Manager User", uid: "1003", group: "filemanager", groups: "", home: "/storage/home/filemanager"}
-            - { name: "lmod", comment: "lmod User", uid: "1004", group: "lmod", groups: "spack", home: "/home/{{ admin_user }}" }
+            - { name: "lmod", comment: "lmod user", uid: "1004", group: "lmod", groups: "spack", home: "/home/lmod" }
 
-        - name: Add admin account to spack group
+        - name: Add admin account to groups
           ansible.builtin.user:
             name: "{{ admin_user }}"
             groups: "{{ item }}"
@@ -96,6 +82,18 @@
             - slurm
             - lmod
 
+        - name: Create necessary directories
+          ansible.builtin.file:
+            path: "{{ item.path }}"
+            state: directory
+            owner: "{{ item.owner }}"
+            group: "{{ item.group }}"
+            mode: "{{ item.mode }}"
+          loop:
+            - { path: "/storage/home", owner: "filemanager", group: "filemanager", mode: "775" }
+            - { path: "/storage/projects", owner: "filemanager", group: "filemanager", mode: "775" }
+            - { path: "/storage/software", owner: "spack", group: "spack", mode: "775" }
+
     ############################################################
     - name: lmod
       become: true
@@ -104,7 +102,7 @@
           ansible.builtin.unarchive:
             src: "https://github.com/TACC/Lmod/archive/refs/tags/{{ lmod_version }}.tar.gz"
             dest: "/tmp"
-            user: lmod
+            owner: lmod
             group: lmod
             remote_src: true
 
@@ -128,16 +126,7 @@
             line: 'MODULEPATH="/storage/software/modules/linux-ubuntu22.04-x86_64/Core"'
             create: true
 
-        - name: Change ownership of /storage/software to spack
-          ansible.builtin.file:
-            path: /storage/software
-            owner: spack
-            group: spack
-            state: directory
-            recurse: true
-
     ############################################################
-
     - name: Install Spack
       become: true
       block:
@@ -151,6 +140,8 @@
             src: "https://github.com/spack/spack/archive/refs/tags/releases/latest.tar.gz"
             dest: "/tmp"
             remote_src: true
+            owner: spack
+            group: spack
           when: spack_executable.stat.exists == False
 
         - name: Move package to /storage/spack
@@ -175,7 +166,7 @@
             content: "/storage/software/modules/linux-ubuntu22.04-x86_64/Core\n"
             owner: spack
             group: spack
-            mode: '0755'
+            mode: '0740'
           when: spack_executable.stat.exists == False
 
         - name: Download config files
@@ -194,11 +185,19 @@
             owner: "{{ item.owner }}"
             group: "{{ item.group }}"
             state: directory
+            recurse: true
           loop:
             - { path: "/storage/projects", owner: "filemanager", group: "filemanager" }
             - { path: "/storage/software", owner: "spack", group: "spack" }
+            - { path: "/storage/software/lmod", owner: "lmod", group: "lmod" }
             - { path: "/storage/spack", owner: "spack", group: "spack" }
 
+        - name: Install Spack packages
+          ansible.builtin.shell: /storage/spack/bin/spack install gmake
+          become: true
+          become_user: spack
+          when: spack_executable.stat.exists == False
+            
     ############################################################
     - name: NFS
       become: true
