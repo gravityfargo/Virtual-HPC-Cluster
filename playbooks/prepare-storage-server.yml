@@ -211,10 +211,8 @@
         - name: Add NFS export entries to /etc/exports
           ansible.builtin.lineinfile:
             path: /etc/exports
-            line: "{{ item }}"
+            line: "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
             create: yes
-          loop:
-            - "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
 
         - name: Apply NFS exports
           ansible.builtin.shell: exportfs -a
