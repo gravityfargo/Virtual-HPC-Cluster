@@ -121,10 +121,6 @@ ansible-playbook prepare-storage-server.yml \
 -e "lmod_version=$LMOD_VERSION" \
 -e "admin_user=$ADMIN_USER"
 
-# Login to the storage server and run the following commands
-sudo su spack
-spack install gmake
-
 # ansible-playbook undo-storage.yml \
 # -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
 # -e "subnet=$SUBNET"
