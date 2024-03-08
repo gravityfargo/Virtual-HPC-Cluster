@@ -1,0 +1,56 @@
+- name: Example Projects Users and Groups
+  hosts: all
+  tasks:
+    - name: Create Groups
+      ansible.builtin.group:
+        name: "{{ item.name }}"
+        gid: "{{ item.gid }}"
+        state: present
+      loop:
+        - { name: "arcsim", gid: "2000" }
+        - { name: "arcsim-john", gid: "2001" }
+        - { name: "arcsim-jason", gid: "2002" }
+        - { name: "spice", gid: "2003" }
+        - { name: "spice-mary", gid: "2004" }
+        - { name: "spice-beth", gid: "2005" }
+
+    - name: Create users 
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment }}"
+        uid: "{{ item.uid }}"
+        group: "{{ item.group }}"
+        groups: "{{ item.groups }}"
+        home: "{{ item.home }}"
+        shell: /bin/bash
+        createhome: yes
+      loop:
+        - { name: "arcsim", comment: "Arcsim Project", uid: "2000", group: "arcsim", groups: "", home: "/storage/projects/arcsim" }
+        - { name: "arcsim-john", comment: "Arcsim John", uid: "2001", group: "arcsim-john", groups: "arcsim", home: "/storage/home/arcsim-john" }
+        - { name: "arcsim-jason", comment: "Arcsim Jason", uid: "2002", group: "arcsim-jason", groups: "arcsim", home: "/storage/home/arcsim-jason" }
+        - { name: "spice", comment: "Spice Project", uid: "2003", group: "spice", groups: "", home: "/storage/projects/spice" }
+        - { name: "spice-mary", comment: "Spice Mary", uid: "2004", group: "spice-mary", groups: "spice", home: "/storage/home/spice-mary" }
+        - { name: "spice-beth", comment: "Spice Beth", uid: "2005", group: "spice-beth", groups: "spice", home: "/storage/home/spice-beth" }
+
+
+    - name: Set default and direct ACL on project directories
+      ansible.posix.acl:
+        path: "/storage/{{ item.path }}"
+        entity: "{{ item.entity}}"
+        etype: "{{ item.etype }}"
+        permissions: "{{ item.perms}}"
+        state: present
+      loop:
+        - { path: "projects/arcsim", entity: "arcsim", etype: "group", perms: "rwx" }
+        - { path: "projects/spice", entity: "spice", etype: "group", perms: "rwx" }
+        - { path: "home/arcsim-john", entity: "arcsim-john", etype: "user", perms: "rwx" }
+        - { path: "home/arcsim-jason", entity: "arcsim-jason", etype: "user", perms: "rwx" }
+        - { path: "home/spice-mary", entity: "spice-mary", etype: "user", perms: "rwx" }
+        - { path: "home/spice-beth", entity: "spice-beth", etype: "user", perms: "rwx" }
+        - { path: "home", entity: "filemanager", etype: "user", perms: "rwx" }
+        - { path: "projects", entity: "filemanager", etype: "user", perms: "rwx" }
+        - { path: "software/modules", entity: "lmod", etype: "user", perms: "rx" }
+        - { path: "spack", entity: "spack", etype: "user", perms: "rwx" }
+        - { path: "software", entity: "spack", etype: "user", perms: "rwx" }
+        - { path: "spack", entity: "umaine-admin", etype: "user", perms: "rwx" }
+        - { path: "software", entity: "umaine-admin", etype: "user", perms: "rwx" }
