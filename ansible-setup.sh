@@ -43,12 +43,14 @@ EOF
 # Prepare Ansible
 ######################################
 tee /etc/ansible/hosts <<EOF
-[cluster]
-$STORAGE_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+[clients]
 $MANAGEMENT_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 $LOGIN_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 $WORKER_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 $HEAD_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+
+[storage]
+$STORAGE_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
@@ -121,44 +123,25 @@ ansible-playbook prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-storage-server.yml -o ~/prepare-storage-server.yml
 
 ansible-playbook prepare-storage-server.yml \
--e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
 -e "subnet=$SUBNET" \
 -e "lmod_version=$LMOD_VERSION" \
 -e "admin_user=$ADMIN_USER"
-
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/reset.yml -o ~/reset.yml
-
-# ansible-playbook reset.yml \
-# -e "target_hostname=$STORAGE_SERVER_HOSTNAME" \
-# -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
-# -e "subnet=$SUBNET"
 
 ######################################
 # Prepare the Login, Worker, and Head Servers
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-hpc-clients.yml -o ~/prepare-hpc-clients.yml
 
-ansible-playbook prepare-hpc-clients.yml \
--e "target_hostname=all" \
+ansible-playbook prepare-hpc-cluster.yml \
 -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
 -e "admin_user=$ADMIN_USER"
 
-# ansible-playbook reset.yml \
-# -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" \
-# -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
-# -e "subnet=$SUBNET"
+######################################
+# Reset a Server
+######################################
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/reset.yml -o ~/reset.yml
 
-# ansible-playbook reset.yml \
-# -e "target_hostname=$LOGIN_SERVER_HOSTNAME" \
-# -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
-# -e "subnet=$SUBNET"
-
-# ansible-playbook reset.yml \
-# -e "target_hostname=$HEAD_SERVER_HOSTNAME" \
-# -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
-# -e "subnet=$SUBNET"
-
-# ansible-playbook reset.yml \
-# -e "target_hostname=$WORKER_SERVER_HOSTNAME" \
-# -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
-# -e "subnet=$SUBNET"
+ansible-playbook reset.yml \
+-e "target_hostname=servername" \
+-e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
+-e "subnet=$SUBNET"
