@@ -1,6 +1,6 @@
 ---
 - name: Prepare the base OS
-  hosts: "{{ target_hostname }}"
+  hosts: all
   vars:
     admin_user: "{{ admin_user }}"
   tasks:

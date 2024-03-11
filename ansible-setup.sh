@@ -111,11 +111,7 @@ curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/pla
 # do not use the "all" as host until after running these commands for the first time.
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
 
-ansible-playbook prepare-base-os.yml -e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-ansible-playbook prepare-base-os.yml -e "target_hostname=$STORAGE_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-ansible-playbook prepare-base-os.yml -e "target_hostname=$LOGIN_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-ansible-playbook prepare-base-os.yml -e "target_hostname=$HEAD_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
-ansible-playbook prepare-base-os.yml -e "target_hostname=$WORKER_SERVER_HOSTNAME" -e "admin_user=$ADMIN_USER"
+ansible-playbook prepare-base-os.yml -e "admin_user=$ADMIN_USER"
 
 ######################################
 # Prepare the Storage Server
@@ -130,7 +126,7 @@ ansible-playbook prepare-storage-server.yml \
 ######################################
 # Prepare the Login, Worker, and Head Servers
 ######################################
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-hpc-clients.yml -o ~/prepare-hpc-clients.yml
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-hpc-cluster.yml -o ~/prepare-hpc-cluster.yml
 
 ansible-playbook prepare-hpc-cluster.yml \
 -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
