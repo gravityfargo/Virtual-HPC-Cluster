@@ -44,8 +44,11 @@ EOF
 ######################################
 tee /etc/ansible/hosts <<EOF
 [cluster]
-$STORAGE_SERVER_HOSTNAME
-$MANAGEMENT_SERVER_HOSTNAME
+$STORAGE_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+$MANAGEMENT_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+$LOGIN_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+$WORKER_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+$HEAD_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
@@ -64,7 +67,7 @@ ssh-keyscan $MANAGEMENT_SERVER_HOSTNAME >> ~/.ssh/known_hosts
 ssh-copy-id $STORAGE_SERVER_HOSTNAME
 # perform the same for any non vm hosts
 
-ansible all -m ping -u $ADMIN_USER
+ansible all -m ping
 
 ######################################
 # Create nessessary VMs
@@ -136,22 +139,7 @@ curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/pla
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-hpc-clients.yml -o ~/prepare-hpc-clients.yml
 
 ansible-playbook prepare-hpc-clients.yml \
--e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME" \
--e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
--e "admin_user=$ADMIN_USER"
-
-ansible-playbook prepare-hpc-clients.yml \
--e "target_hostname=$LOGIN_SERVER_HOSTNAME" \
--e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
--e "admin_user=$ADMIN_USER"
-
-ansible-playbook prepare-hpc-clients.yml \
--e "target_hostname=$HEAD_SERVER_HOSTNAME" \
--e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
--e "admin_user=$ADMIN_USER"
-
-ansible-playbook prepare-hpc-clients.yml \
--e "target_hostname=$WORKER_SERVER_HOSTNAME" \
+-e "target_hostname=all" \
 -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
 -e "admin_user=$ADMIN_USER"
 
