@@ -1,10 +1,9 @@
 ---
-- name: Prepare the HPC Clients
-  hosts: "{{ target_hostname }}"
+- name: Prepare HPC Cluster
+  hosts: clients
   become: true
   vars:
     admin_user: "{{ admin_user }}"
-    target_hostname: "{{ target_hostname }}"
     storage_server_hostname: "{{ storage_server_hostname }}"
   tasks:
     ############################################################
@@ -159,5 +158,10 @@
             line: 'MODULEPATH="/storage/software/modules/linux-ubuntu22.04-x86_64/Core"'
             create: true
 
-
-
+    ############################################################
+    # - name: Install Munge
+    #   become: true
+    #   block:
+    #     - name: Download Lmod
+    #       ansible.builtin.get_url:
+    #         url: ""

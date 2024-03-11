@@ -1,6 +1,6 @@
 ---
 - name: Prepare the Storage Server
-  hosts: "{{ storage_server_hostname }}"
+  hosts: storage
   become: true
   vars:
     subnet: "{{ subnet }}"
