@@ -20,6 +20,8 @@ sudo groupadd -r ansibleadmins && \
 sudo usermod -aG ansibleadmins $USER && \
 exec sudo su -l $USER
 
+sudo mkdir /etc/ansible && \
+sudo touch /etc/ansible/hosts && \
 sudo chown -R root:ansibleadmins /etc/ansible && \
 sudo chmod 774 /etc/ansible && \
 sudo chmod 664 /etc/ansible/hosts
@@ -62,7 +64,7 @@ ssh-keyscan $MANAGEMENT_SERVER_HOSTNAME >> ~/.ssh/known_hosts
 ssh-copy-id $STORAGE_SERVER_HOSTNAME
 # perform the same for any non vm hosts
 
-ansible all -m ping
+ansible all -m ping -u $ADMIN_USER
 
 ######################################
 # Create nessessary VMs
