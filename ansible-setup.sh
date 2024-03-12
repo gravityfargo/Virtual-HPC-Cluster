@@ -8,8 +8,8 @@ sudo mv ~/.variables.sh /.variables.sh && \
 chmod 600 /.variables.sh && \
 echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
 
-sudo sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
-sudo systemctl restart sshd
+# Reboot from vm host. If there was a kernel update, reboot fails so start and stop as below.
+# sudo virsh shutdown $MANAGEMENT_SERVER_HOSTNAME && sudo virsh start $MANAGEMENT_SERVER_HOSTNAME
 
 sudo touch /etc/cloud/cloud-init.disabled
 
@@ -20,8 +20,6 @@ sudo groupadd -r ansibleadmins && \
 sudo usermod -aG ansibleadmins $USER && \
 exec sudo su -l $USER
 
-sudo mkdir /etc/ansible && \
-sudo touch /etc/ansible/hosts && \
 sudo chown -R root:ansibleadmins /etc/ansible && \
 sudo chmod 774 /etc/ansible && \
 sudo chmod 664 /etc/ansible/hosts
@@ -31,6 +29,8 @@ sudo chmod 664 /etc/ansible/hosts
 ######################################
 # Networking
 ######################################
+sudo cp /etc/hosts /etc/hosts.bak
+
 sudo tee -a /etc/hosts <<EOF
 $STORAGE_SERVER_IP $STORAGE_SERVER_FQDN $STORAGE_SERVER_HOSTNAME
 $MANAGEMENT_SERVER_IP $MANAGEMENT_SERVER_FQDN $MANAGEMENT_SERVER_HOSTNAME
@@ -43,88 +43,74 @@ EOF
 # Prepare Ansible
 ######################################
 tee /etc/ansible/hosts <<EOF
-[clients]
+[management]
 $MANAGEMENT_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+
+[login]
 $LOGIN_SERVER_HOSTNAME ansible_user=$ADMIN_USER
-$WORKER_SERVER_HOSTNAME ansible_user=$ADMIN_USER
-$HEAD_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 
 [storage]
 $STORAGE_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+
+[head]
+$HEAD_SERVER_HOSTNAME ansible_user=$ADMIN_USER
+
+[workers]
+$WORKER_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
 EOF
 
-ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
-SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub) && \
-echo export SSH_PUBLIC_KEY_MGMT=\"$SSH_KEY_CONTENT\" >> /.variables.sh && \
-source ~/.bashrc
 
-echo $SSH_PUBLIC_KEY_MGMT >> ~/.ssh/authorized_keys
-
-ssh-keyscan $STORAGE_SERVER_HOSTNAME >> ~/.ssh/known_hosts && \
-ssh-keyscan $MANAGEMENT_SERVER_HOSTNAME >> ~/.ssh/known_hosts
-
-ssh-copy-id $STORAGE_SERVER_HOSTNAME
-# perform the same for any non vm hosts
-
-ansible all -m ping
+cd && git clone https://github.com/gravityfargo/Virtual-HPC-Cluster.git && \
+cd Virtual-HPC-Cluster
 
 ######################################
 # Create nessessary VMs
 ######################################
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/create-vm.yml -o ~/create-vm.yml
-
 ansible-playbook create-vm.yml -e "hostname=$LOGIN_SERVER_HOSTNAME" \
 -e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
--e "admin_user=$ADMIN_USER" -e "mac=$LOGIN_SERVER_MAC" \
+-e "admin_user=$ADMIN_USER" \
+-e "mac=$LOGIN_SERVER_MAC" \
 -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
--e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
+-e "ssh_public_key_org='$SSH_PUBLIC_KEY_ORG'" \
 -e "ip=$LOGIN_SERVER_IP"
 
 ansible-playbook create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
 -e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
 -e "admin_user=$ADMIN_USER" -e "mac=$HEAD_SERVER_MAC" \
 -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
--e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
+-e "ssh_public_key_org='$SSH_PUBLIC_KEY_ORG'" \
 -e "ip=$HEAD_SERVER_IP"
 
-# ansible-playbook create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
-# -e "vm_host='$WORKER_SERVER_HOSTNAME'" \
-# -e "admin_user=$ADMIN_USER" -e "mac=$WORKER_SERVER_MAC" \
-# -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
-# -e "ssh_public_key_mgmt='$SSH_PUBLIC_KEY_MGMT'" \
-# -e "ip=$WORKER_SERVER_IP"
+ansible-playbook create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
+-e "vm_host='$WORKER_SERVER_HOSTNAME'" \
+-e "admin_user=$ADMIN_USER" -e "mac=$WORKER_SERVER_MAC" \
+-e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
+-e "ssh_public_key_org='$SSH_PUBLIC_KEY_ORG'" \
+-e "ip=$WORKER_SERVER_IP"
 
-######################################
-# Delete VMs
-######################################
+# ansible all -m ping
 
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/delete-vm.yml -o ~/delete-vm.yml
-# ansible-playbook delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$LOGIN_SERVER_HOSTNAME"
-# ansible-playbook delete-vm.yml -e "vm_host=$STORAGE_SERVER_HOSTNAME" -e "target_hostname=$HEAD_SERVER_HOSTNAME"
+ansible-playbook keyscan.yml \
+-e "target=localhost"
 
 ######################################
 # Prepare the base OSes
 ######################################
-# do not use the "all" as host until after running these commands for the first time.
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-base-os.yml -o ~/prepare-base-os.yml
-
 ansible-playbook prepare-base-os.yml -e "admin_user=$ADMIN_USER"
 
 ######################################
 # Prepare the Storage Server
 ######################################
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-storage-server.yml -o ~/prepare-storage-server.yml
-
 ansible-playbook prepare-storage-server.yml \
 -e "subnet=$SUBNET" \
 -e "lmod_version=$LMOD_VERSION" \
 -e "admin_user=$ADMIN_USER"
 
 ######################################
-# Prepare the Login, Worker, and Head Servers
+# Prepare the HPC Clients
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-hpc-cluster.yml -o ~/prepare-hpc-cluster.yml
 
@@ -133,11 +119,32 @@ ansible-playbook prepare-hpc-cluster.yml \
 -e "admin_user=$ADMIN_USER"
 
 ######################################
+# Prepare the Head Server
+######################################
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-head.yml -o ~/prepare-head.yml
+
+ansible-playbook keyscan.yml \
+-e "target=$HEAD_SERVER_HOSTNAME"
+
+ansible-playbook prepare-head.yml
+
+######################################
 # Reset a Server
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/reset.yml -o ~/reset.yml
 
 ansible-playbook reset.yml \
--e "target_hostname=servername" \
+-e "target_hostname=$STORAGE_SERVER_HOSTNAME" \
 -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
--e "subnet=$SUBNET"
+-e "subnet=$SUBNET" \
+-e "admin_user=$ADMIN_USER" \
+-e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'"
+
+######################################
+# Delete a VM
+######################################
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/delete-vm.yml -o ~/delete-vm.yml
+
+ansible-playbook delete-vm.yml \
+-e "vm_host=$STORAGE_SERVER_HOSTNAME" \
+-e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME"
