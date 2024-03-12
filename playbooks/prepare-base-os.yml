@@ -38,6 +38,7 @@
             - whois
             - prometheus-node-exporter
             - gnupg2
+            - rsync
 
     ############################################################
     - name: Services
@@ -53,11 +54,11 @@
             enabled: "{{ item.enabled }}"
             state: "{{ item.state }}"
           loop:
-            - { name: "systemd-timesyncd", enabled: yes, state: started }
-            - { name: "prometheus-node-exporter", enabled: yes, state: started }
-            - { name: "auditd", enabled: yes, state: started }
-            - { name: "motd-news", enabled: no, state: stopped }
-            - { name: "systemd-networkd-wait-online", enabled: no, state: stopped }
+            - { name: "systemd-timesyncd", enabled: true, state: started }
+            - { name: "prometheus-node-exporter", enabled: true, state: started }
+            - { name: "auditd", enabled: true, state: started }
+            - { name: "motd-news", enabled: false, state: stopped }
+            - { name: "systemd-networkd-wait-online", enabled: false, state: stopped }
 
     ############################################################
     - name: Firewall
@@ -86,6 +87,9 @@
     - name: Networking
       become: true
       block:
+        - name: Backup hosts file on remote server
+          ansible.builtin.shell: cp /etc/hosts /etc/hosts.bak
+
         - name: Copy /etc/hosts from local to remote
           ansible.builtin.copy:
             src: /etc/hosts
@@ -101,11 +105,36 @@
             owner: "{{ admin_user }}"
             group: "{{ admin_user }}"
             mode: "0600"
+        
+        - name: Copy ssh public key from local to remote
+          ansible.builtin.copy:
+            src: /home/{{ admin_user }}/.ssh/id_ed25519.pub
+            dest: /home/{{ admin_user }}/.ssh/id_ed25519.pub
+            owner: "{{ admin_user }}"
+            group: "{{ admin_user }}"
+            mode: "0600"
+
+        - name: Copy ssh private key from local to remote
+          ansible.builtin.copy:
+            src: /home/{{ admin_user }}/.ssh/id_ed25519
+            dest: /home/{{ admin_user }}/.ssh/id_ed25519
+            owner: "{{ admin_user }}"
+            group: "{{ admin_user }}"
+            mode: "0600"
 
     ############################################################
     - name: SSH Settings
       become: true
       block:
+        - name: Backup /etc/ssh/sshd_config
+          ansible.builtin.copy:
+            src: /etc/ssh/sshd_config
+            dest: /etc/ssh/sshd_config.bak
+            owner: root
+            group: root
+            mode: "0644"
+            remote_src: yes
+
         - name: Disable mail in PAM
           ansible.builtin.lineinfile:
             path: /etc/pam.d/sshd
