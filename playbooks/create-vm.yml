@@ -4,7 +4,7 @@
     hostname: "{{ hostname }}"
     admin_user: "{{ admin_user }}"
     ssh_public_key_personal: "{{ ssh_public_key_personal }}"
-    ssh_public_key_mgmt: "{{ ssh_public_key_mgmt }}"
+    ssh_public_key_org: "{{ ssh_public_key_org }}"
     ip: "{{ ip }}"
     mac: "{{ mac }}"
     base_image_path: "/vms/isos/jammy-server-cloudimg-amd64.img"
@@ -36,7 +36,7 @@
               groups: sudo
               ssh_authorized_keys:
                 - {{ ssh_public_key_personal }}
-                - {{ ssh_public_key_mgmt }}
+                - {{ ssh_public_key_org }}
               lock_passwd: false
 
     - name: Create VM base image
@@ -60,11 +60,3 @@
     - name: virt-install output
       ansible.builtin.debug:
         var: virt_install_output.stdout_lines
-
-    - name: Add VM to Ansible inventory file on control node
-      delegate_to: localhost
-      ansible.builtin.lineinfile:
-        path: /etc/ansible/hosts
-        insertafter: "[cluster]$"
-        line: "{{ hostname }}"
-        state: present
