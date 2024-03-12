@@ -8,6 +8,12 @@
     admin_user: "{{ admin_user }}"
   tasks:
     ############################################################
+    - name: Backup sources.list
+      ansible.builtin.copy:
+        src: /etc/apt/sources.list
+        dest: /etc/apt/sources.list.bak
+        remote_src: yes
+
     - name: Enable deb-src in sources.list
       ansible.builtin.lineinfile:
         path: /etc/apt/sources.list
@@ -18,36 +24,36 @@
 
     - name: Install dependencies
       ansible.builtin.apt:
-        name:
-          - libreadline-dev
-          - nfs-kernel-server
-          - bc
-          - gcc
-          - g++
-          - gfortran
-          - clang
-          - gcc-10
-          - g++-10
-          - gfortran-10
-          - gcc-12
-          - g++-12
-          - gfortran-12
-          - lua5.3
-          - lua-bit32:amd64
-          - lua-posix:amd64
-          - lua-posix-dev
-          - liblua5.3-0:amd64
-          - liblua5.3-dev:amd64
-          - tcl
-          - tcl-dev
-          - tcl8.6
-          - tcl8.6-dev:amd64
-          - libtcl8.6:amd64
-          - python3-pip
-          - libpmix2
-          - lua-filesystem
+        name: "{{ item }}"
         state: present
-        update_cache: yes
+      loop:
+        - libreadline-dev
+        - nfs-kernel-server
+        - bc
+        - gcc
+        - g++
+        - gfortran
+        - clang
+        - gcc-10
+        - g++-10
+        - gfortran-10
+        - gcc-12
+        - g++-12
+        - gfortran-12
+        - lua5.3
+        - lua-bit32:amd64
+        - lua-posix:amd64
+        - lua-posix-dev
+        - liblua5.3-0:amd64
+        - liblua5.3-dev:amd64
+        - tcl
+        - tcl-dev
+        - tcl8.6
+        - tcl8.6-dev:amd64
+        - libtcl8.6:amd64
+        - python3-pip
+        - libpmix2
+        - lua-filesystem
 
     ############################################################
     - name: Mount Points and environment management 
@@ -128,6 +134,12 @@
             src: "/storage/software/lmod/lmod/init/profile"
             dest: /etc/profile.d/z00_lmod.sh
             state: link
+
+        - name: Backup environment file
+          ansible.builtin.copy:
+            src: /etc/environment
+            dest: /etc/environment.bak
+            remote_src: yes
 
         - name: Set MODULEPATH environment variable
           ansible.builtin.lineinfile:
