@@ -207,7 +207,6 @@
             - .zsh_history.pre-oh-my-zsh
             - .zsh_history.pre-oh-my-zsh.bak
             - .conda
-            -
 
     ############################################################
     # Make sure /etc/update-motd.d exists
