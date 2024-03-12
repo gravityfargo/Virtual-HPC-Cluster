@@ -6,39 +6,52 @@
     target_hostname: "{{ target_hostname }}"
     storage_server_hostname: "{{ storage_server_hostname }}"
     subnet: "{{ subnet }}"
+    admin_user: "{{ admin_user }}"
+    ssh_public_key_personal: "{{ ssh_public_key_personal }}"
   tasks:
     ############################################################
-    - name: Storage Server
-      when: target_hostname == storage_server_hostname
+    - name: Packages
       block:
-        - name: Remove NFS exports
-          ansible.builtin.lineinfile:
-            path: /etc/exports
-            line: "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
+        - name: Remove packages
+          ansible.builtin.apt:
+            name: "{{ item }}"
             state: absent
-          register: nfs_exports
+          loop:
+            - prometheus-node-exporter
+            - auditd
+            - munge
+            - gcc-10
+            - g++-10
+            - gfortran-10
+            - gcc-12
+            - g++-12
+            - gfortran-12
+            - lua5.3
+            - lua-bit32:amd64
+            - lua-posix:amd64
+            - lua-posix-dev
+            - liblua5.3-0:amd64
+            - liblua5.3-dev:amd64
+            - tcl
+            - tcl-dev
+            - tcl8.6
+            - tcl8.6-dev:amd64
+            - libtcl8.6:amd64
+            - python3-pip
+            - libpmix2
+            - lua-filesystem
+            - rsync
 
-        - name: Execute NFS exports
-          ansible.builtin.shell: exportfs -a
-          when: nfs_exports_change.changed
+        - name: Auto-remove unused packages
+          ansible.builtin.apt:
+            autoremove: yes
+
+        - name: Clean APT cache
+          ansible.builtin.apt:
+            clean: yes
 
     ############################################################
-    - name: HPC Client
-      when: target_hostname != storage_server_hostname
-      block:
-        - name: Unmount /storage
-          ansible.builtin.mount:
-            path: /storage
-            state: unmounted
-
-        - name: remove NFS mount from /etc/fstab
-          ansible.builtin.lineinfile:
-            path: /etc/fstab
-            line: "{{ storage_server_hostname }}:/storage /storage nfs defaults 0 0"
-            state: absent
-
-    ############################################################
-    - name: General
+    - name: Users and Groups
       block:
         - name: Delete users
           ansible.builtin.user:
@@ -60,6 +73,9 @@
             - filemanager
             - lmod
 
+    ############################################################
+    - name: Lmod/Spack
+      block:
         - name: lmod - remove profile script symbolic link
           ansible.builtin.file:
             path: /etc/profile.d/z00_lmod.sh
@@ -70,3 +86,160 @@
             path: /etc/environment
             line: 'MODULEPATH="/storage/software/modules/linux-ubuntu22.04-x86_64/Core"'
             state: absent
+
+        - name: Remove spack source from bashrc
+          ansible.builtin.lineinfile:
+            path: /home/{{ admin_user }}/.bashrc
+            line: 'source /storage/spack/share/spack/setup-env.sh'
+            state: absent
+
+    ############################################################
+    - name: Remove NFS Mount
+      when: target_hostname != storage_server_hostname
+      block:
+        - name: Unmount /storage
+          ansible.builtin.mount:
+            path: /storage
+            state: unmounted
+
+        - name: remove NFS mount from /etc/fstab
+          ansible.builtin.lineinfile:
+            path: /etc/fstab
+            line: "{{ storage_server_hostname }}:/storage /storage nfs defaults 0 0"
+            state: absent
+
+    ############################################################
+    - name: Remove NFS Export
+      when: target_hostname == storage_server_hostname
+      block:
+        - name: Remove NFS exports
+          ansible.builtin.lineinfile:
+            path: /etc/exports
+            line: "/storage  {{ subnet }}(rw,sync,no_subtree_check)"
+            state: absent
+          register: nfs_exports
+
+        - name: Execute NFS exports
+          ansible.builtin.shell: exportfs -a
+          when: nfs_exports.changed
+
+        - name: Remove /storage directory
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - /storage/home
+            - /storage/projects
+            - /storage/software
+            - /storage/spack
+          when: nfs_exports.changed
+
+    ############################################################
+    - name: Remove SSH Public Keys
+      block:
+        - name: Delete .ssh directory
+          ansible.builtin.file:
+            path: /home/{{ admin_user }}/.ssh
+            state: absent
+
+        - name: Recreate .ssh directory
+          ansible.builtin.file:
+            path: /home/{{ admin_user }}/.ssh
+            state: directory
+            owner: "{{ admin_user }}"
+            group: "{{ admin_user }}"
+            mode: 0700
+
+        - name: Recreate Authorized Keys file with personal SSH public key
+          ansible.builtin.copy:
+            content: "{{ ssh_public_key_personal }}"
+            dest: /home/{{ admin_user }}/.ssh/authorized_keys
+            owner: "{{ admin_user }}"
+            group: "{{ admin_user }}"
+            mode: 0600
+
+    ############################################################
+    - name: Reset hosts files
+      block:
+        - name: Backup /etc/hosts
+          ansible.builtin.copy:
+            src: /etc/hosts
+            dest: /etc/hosts.modified.bak
+            owner: root
+            group: root
+            mode: 0644
+            remote_src: true
+
+        - name: Recover backup of /etc/hosts
+          ansible.builtin.copy:
+            src: /etc/hosts.bak
+            dest: /etc/hosts
+            owner: root
+            group: root
+            mode: 0644
+            remote_src: true
+
+    ############################################################
+    - name: Remove user Customizations
+      block:
+        - name: Change the admin's default shell to Zsh
+          become: true
+          ansible.builtin.shell: chsh -s $(which bash) {{ admin_user }}
+
+        - name: Remove oh-my-zsh
+          ansible.builtin.file:
+            path: /home/{{ admin_user }}/oh-my-zsh
+            state: absent
+
+        - name: Remove directories directory
+          ansible.builtin.file:
+            path: /home/{{ admin_user }}/"{{ item }}"
+            state: absent
+          loop:
+            - .spack
+            - .oh-my-zsh
+            - .zshrc
+            - .zsh_history
+            - .zshrc.pre-oh-my-zsh
+            - .zshrc.bak
+            - .zshrc.pre-oh-my-zsh.bak
+            - .zsh_history.bak
+            - .zsh_history.pre-oh-my-zsh
+            - .zsh_history.pre-oh-my-zsh.bak
+            - .conda
+            -
+
+    ############################################################
+    # Make sure /etc/update-motd.d exists
+    - name: Delete MOTD
+    #   block:
+    #     - name: Remove /etc/motd
+    #       ansible.builtin.file:
+    #         path: /etc/motd
+    #         state: absent
+
+    ############################################################
+    - name: Services
+      become: true
+      block:
+        - name: Disable or enable services
+          ansible.builtin.systemd:
+            name: "{{ item.name }}"
+            enabled: "{{ item.enabled }}"
+            state: "{{ item.state }}"
+          loop:
+            - { name: "systemd-timesyncd", enabled: false, state: stopped }
+            - { name: "motd-news", enabled: true, state: stopped }
+            - { name: "systemd-networkd-wait-online", enabled: true, state: stopped }
+
+        - name: Disable UFW
+          ansible.builtin.ufw:
+            state: disabled
+
+    ############################################################
+    - name: Echo message
+      ansible.builtin.debug:
+        msg: "{{ item }}"
+      loop:
+        - '"{{ target_hostname }}" has been reset'
+        - 'If this was a complete reset, start again from "Organizational SSH Key Setup" in initial_setup.sh'
