@@ -1,18 +1,11 @@
 #!/bin/bash
 ######################################
-# Prepare the main host
+# Prepare the VM host
 ######################################
 sudo apt update -y && sudo apt upgrade -y && \
 sudo apt install -y zsh git curl wget whois
 
-# fill in this file with your relevant info. 
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o /.variables.sh
-
-ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
-SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub) && \
-echo export SSH_PUBLIC_KEY_STORAGE=\"$SSH_KEY_CONTENT\" >> /.variables.sh
-
-echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
 
 ######################################
 # libvirt setup
@@ -88,8 +81,21 @@ curl https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.i
 exit # log out and log back in
 
 ######################################
+# Organizational SSH Key Setup
+######################################
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
+SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub | cut -d' ' -f 1-2) && \
+echo export SSH_PUBLIC_KEY_ORG=\"$SSH_KEY_CONTENT\" >> /.variables.sh
+
+# Any servers not created by this script will need to have the org key added to their authorized_keys file!
+echo -e "\n$SSH_PUBLIC_KEY_ORG" >> ~/.ssh/authorized_keys
+
+echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
+
+######################################
 # Networking
 ######################################
+sudo cp /etc/hosts /etc/hosts.bak
 sudo tee -a /etc/hosts <<EOF
 $STORAGE_SERVER_IP $STORAGE_SERVER_FQDN $STORAGE_SERVER_HOSTNAME
 $MANAGEMENT_SERVER_IP $MANAGEMENT_SERVER_FQDN $MANAGEMENT_SERVER_HOSTNAME
@@ -120,16 +126,15 @@ users:
     sudo:  ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
       - $SSH_PUBLIC_KEY_PERSONAL
-      - $SSH_PUBLIC_KEY_STORAGE
-    
+      - $SSH_PUBLIC_KEY_ORG
 EOF
 
 qemu-img create -b /vms/isos/jammy-server-cloudimg-amd64.img -f qcow2 -F qcow2 $MANAGEMENT_SERVER_HOSTNAME-base.img 40G
 
 sudo virt-install \
 --name $MANAGEMENT_SERVER_HOSTNAME \
---ram 4096 \
---vcpus 4 \
+--ram 16384 \
+--vcpus 6 \
 --import \
 --disk path=$MANAGEMENT_SERVER_HOSTNAME-base.img,format=qcow2 \
 --os-variant ubuntu22.04 \
@@ -146,8 +151,9 @@ sudo virt-install \
 
 
 # wait for the VM to boot and then run the following commands
-scp /.variables.sh $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/
-
+scp /.variables.sh $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/ && \
+scp ~/.ssh/id_ed25519 $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/.ssh/id_ed25519 && \
+scp ~/.ssh/id_ed25519.pub $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/.ssh/id_ed25519.pub
 
 # go to ansible-setup.sh for semi-automated setup of the rest of the cluster
 # go to manual-setup.sh for manual setup of the rest of the cluster
