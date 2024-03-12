@@ -1,48 +1,52 @@
 ---
-# - name: Install Packages
-#   hosts: all
-#   become: true
-#   tasks:
-#     ###########################################################
-#     - name: Packages
-#       become: true
-#       block:
-#         - name: Update and upgrade all packages
-#           ansible.builtin.apt:
-#             update_cache: yes
-#             upgrade: dist
-#             cache_valid_time: 3600
-
-#         - name: Install Packages
-#           ansible.builtin.apt:
-#             name: "{{ item }}"
-#             state: present
-#           loop:
-#             - munge
-
-#     ###########################################################
-#     - name: Munge
-#       become: true
-#       block:
-#         - name: Enable multitheading for munge
-#           ansible.builtin.lineinfile:
-#             path: /etc/default/munge
-#             line: 'OPTIONS="--num-threads 10"'
-#             state: present
-
-#         - name: Enable and start munge
-#           ansible.builtin.systemd:
-#             name: munge
-#             enabled: true
-#             state: started
-
-###########################################################
-###########################################################
-- name: Prepare Parent Munge
+- name: Child Munge
+  hosts: all
   become: true
+  tasks:
+    ###########################################################
+    - name: Packages
+      become: true
+      block:
+        - name: Update and upgrade all packages
+          ansible.builtin.apt:
+            update_cache: yes
+            upgrade: dist
+            cache_valid_time: 3600
+
+        - name: Install Packages
+          ansible.builtin.apt:
+            name: "{{ item }}"
+            state: present
+          loop:
+            - munge
+
+    ###########################################################
+    - name: Munge
+      become: true
+      block:
+        - name: Enable multitheading for munge
+          ansible.builtin.lineinfile:
+            path: /etc/default/munge
+            line: 'OPTIONS="--num-threads 10"'
+            state: present
+
+        - name: Enable and start munge
+          ansible.builtin.systemd:
+            name: munge
+            enabled: true
+            state: stopped
+
+###########################################################
+###########################################################
+- name: Parent Munge
   hosts: head
   tasks:
     ###########################################################
+    - name: Write ansible host's host key to known hosts
+      ansible.builtin.shell: "ssh-keyscan -H {{ item }} >> ~/.ssh/known_hosts"
+      loop: "{{ groups['all'] }}"
+      ignore_errors: true
+      
     - name: Copy munge key to all other servers
       ansible.builtin.synchronize:
         src: /etc/munge/munge.key
