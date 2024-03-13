@@ -99,10 +99,11 @@ EOF
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
 SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub | cut -d' ' -f 1-2) && \
 echo export SSH_PUBLIC_KEY_ORG=\"$SSH_KEY_CONTENT\" >> /.variables.sh && \
+echo -e "\n$SSH_PUBLIC_KEY_ORG" >> ~/.ssh/authorized_keys && \
 source ~/.bashrc 
 
 # Any servers not created by this script will need to have the org key added to their authorized_keys file!
-echo -e "\n$SSH_PUBLIC_KEY_ORG" >> ~/.ssh/authorized_keys
+# echo -e "\n$SSH_PUBLIC_KEY_ORG" >> ~/.ssh/authorized_keys
 
 ######################################
 # Intall the Management VM
@@ -123,7 +124,7 @@ users:
     shell: /bin/bash
     lock_passwd: false
     groups: sudo
-    sudo:  ALL=(ALL) NOPASSWD:ALL
+    sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
       - $SSH_PUBLIC_KEY_PERSONAL
       - $SSH_PUBLIC_KEY_ORG
@@ -144,8 +145,8 @@ sudo virt-install \
 
 # wait for the VM to boot and then run the following commands
 scp /.variables.sh $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/ && \
-scp ~/.ssh/id_ed25519 $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/.ssh/id_ed25519 && \
-scp ~/.ssh/id_ed25519.pub $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/.ssh/id_ed25519.pub
+scp ~/.ssh/id_ed25519 $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/.ssh/ && \
+scp ~/.ssh/id_ed25519.pub $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/.ssh/
 
 ######################################
 # Delete the Management VM
@@ -153,15 +154,23 @@ scp ~/.ssh/id_ed25519.pub $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/.ssh/id_ed25
 # If you're deleting the whole & setup cluster, use ansible to reset the storage server first.
 # Re-enter setup at `Organizational SSH Key Setup` following removal of the Management VM
 
-# sudo virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
-# sudo virsh undefine $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
-# rm -rf /vms/$MANAGEMENT_SERVER_HOSTNAME && \
-# ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R $MANAGEMENT_SERVER_HOSTNAME && \
-# sudo sed -i '/^export SSH_PUBLIC_KEY_ORG/d' /.variables.sh && \
-# sed -i '/^$SSH_PUBLIC_KEY_ORG' ~/.ssh/authorized_keys && \
-# sudo chown $USER:$USER /.variables.sh && \
-# rm ~/.ssh/id_ed25519* && \
-# source ~/.bashrc
+TARGET=$MANAGEMENT_SERVER_HOSTNAME
+# TARGET=$LOGIN_SERVER_HOSTNAME
+# TARGET=$HEAD_SERVER_HOSTNAME
+# TARGET=$WORKER_SERVER_HOSTNAME
+
+sudo virsh destroy $TARGET && \
+sudo virsh undefine $TARGET && \
+sudo virsh pool-destroy $TARGET && \
+sudo virsh pool-undefine $TARGET && \
+rm -rf /vms/$TARGET && \
+ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R $TARGET && \
+sudo sed -i '/^export SSH_PUBLIC_KEY_ORG/d' /.variables.sh && \
+sed -i "/$SSH_PUBLIC_KEY_ORG/d" ~/.ssh/authorized_keys && \
+sed -i '/REGEX_MATCHING_KEY/d' ~/.ssh/authorized_keys
+sudo chown $USER:$USER /.variables.sh && \
+rm ~/.ssh/id_ed25519* && \
+source ~/.bashrc
 
 ######################################
 # Next Steps
