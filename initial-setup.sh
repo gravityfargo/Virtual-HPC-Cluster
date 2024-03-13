@@ -5,8 +5,6 @@
 sudo apt update -y && sudo apt upgrade -y && \
 sudo apt install -y zsh git curl wget whois
 
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o /.variables.sh
-
 ######################################
 # libvirt setup
 ######################################
@@ -78,7 +76,7 @@ sudo chmod g+s /vms
 
 curl https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -o /vms/isos/jammy-server-cloudimg-amd64.img
 
-exit # log out and log back in
+sudo reboot
 
 ######################################
 # Organizational SSH Key Setup
@@ -90,6 +88,7 @@ echo export SSH_PUBLIC_KEY_ORG=\"$SSH_KEY_CONTENT\" >> /.variables.sh
 # Any servers not created by this script will need to have the org key added to their authorized_keys file!
 echo -e "\n$SSH_PUBLIC_KEY_ORG" >> ~/.ssh/authorized_keys
 
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o /.variables.sh && \
 echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
 
 ######################################
@@ -142,13 +141,15 @@ sudo virt-install \
 --graphics vnc,listen=0.0.0.0 --noautoconsole \
 --cloud-init user-data=user-data.yaml,meta-data=meta-data.yaml
 
-
-
-# virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
-# virsh $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
-# rm -rf /storage/vms/$MANAGEMENT_SERVER_HOSTNAME && \
-# ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R "$MANAGEMENT_SERVER_HOSTNAME"
-
+# If you're deleting the whole & setup cluster, use ansible to reset the storage server first.
+# sudo virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
+# sudo virsh undefine $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
+# rm -rf /vms/$MANAGEMENT_SERVER_HOSTNAME && \
+# ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R $MANAGEMENT_SERVER_HOSTNAME && \
+# sudo sed -i '/^export SSH_PUBLIC_KEY_ORG/d' /.variables.sh && \
+# sed -i '/^$SSH_PUBLIC_KEY_ORG' ~/.ssh/authorized_keys && \
+# sudo chown $USER:$USER /.variables.sh && \
+# source ~/.bashrc
 
 # wait for the VM to boot and then run the following commands
 scp /.variables.sh $ADMIN_USER@$MANAGEMENT_SERVER_HOSTNAME:~/ && \
