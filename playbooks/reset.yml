@@ -182,7 +182,7 @@
     ############################################################
     - name: Remove user Customizations
       block:
-        - name: Change the admin's default shell to Zsh
+        - name: Change the admin's default shell to bash
           become: true
           ansible.builtin.shell: chsh -s $(which bash) {{ admin_user }}
 
