@@ -5,6 +5,9 @@
 sudo apt update -y && sudo apt upgrade -y && \
 sudo apt install -y zsh git curl wget whois
 
+curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o /.variables.sh && \
+echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
+
 ######################################
 # libvirt setup
 ######################################
@@ -79,19 +82,6 @@ curl https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.i
 sudo reboot
 
 ######################################
-# Organizational SSH Key Setup
-######################################
-ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
-SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub | cut -d' ' -f 1-2) && \
-echo export SSH_PUBLIC_KEY_ORG=\"$SSH_KEY_CONTENT\" >> /.variables.sh
-
-# Any servers not created by this script will need to have the org key added to their authorized_keys file!
-echo -e "\n$SSH_PUBLIC_KEY_ORG" >> ~/.ssh/authorized_keys
-
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/variables.sh -o /.variables.sh && \
-echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
-
-######################################
 # Networking
 ######################################
 sudo cp /etc/hosts /etc/hosts.bak
@@ -102,6 +92,16 @@ $LOGIN_SERVER_IP $LOGIN_SERVER_FQDN $LOGIN_SERVER_HOSTNAME
 $WORKER_SERVER_IP $WORKER_SERVER_FQDN $WORKER_SERVER_HOSTNAME
 $HEAD_SERVER_IP $HEAD_SERVER_FQDN $HEAD_SERVER_HOSTNAME
 EOF
+
+######################################
+# Organizational SSH Key Setup
+######################################
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
+SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub | cut -d' ' -f 1-2) && \
+echo export SSH_PUBLIC_KEY_ORG=\"$SSH_KEY_CONTENT\" >> /.variables.sh
+
+# Any servers not created by this script will need to have the org key added to their authorized_keys file!
+echo -e "\n$SSH_PUBLIC_KEY_ORG" >> ~/.ssh/authorized_keys
 
 ######################################
 # Intall the Management VM
@@ -142,6 +142,7 @@ sudo virt-install \
 --cloud-init user-data=user-data.yaml,meta-data=meta-data.yaml
 
 # If you're deleting the whole & setup cluster, use ansible to reset the storage server first.
+#  Re-enter setup at `Organizational SSH Key Setup` following removal of the Management VM
 # sudo virsh destroy $MANAGEMENT_SERVER_HOSTNAME && \
 # sudo virsh undefine $MANAGEMENT_SERVER_HOSTNAME --remove-all-storage && \
 # rm -rf /vms/$MANAGEMENT_SERVER_HOSTNAME && \
