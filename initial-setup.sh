@@ -97,9 +97,10 @@ EOF
 # Organizational SSH Key Setup
 ######################################
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 && \
-SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub | cut -d' ' -f 1-2) && \
+SSH_KEY_CONTENT=$(cat ~/.ssh/id_ed25519.pub | cut -d' ' -f 1-2)
+
 echo export SSH_PUBLIC_KEY_ORG=\"$SSH_KEY_CONTENT\" >> /.variables.sh && \
-echo -e "\n$SSH_PUBLIC_KEY_ORG" >> ~/.ssh/authorized_keys && \
+echo -e $SSH_PUBLIC_KEY_ORG >> ~/.ssh/authorized_keys && \
 source ~/.bashrc 
 
 # Any servers not created by this script will need to have the org key added to their authorized_keys file!
