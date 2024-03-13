@@ -9,7 +9,7 @@ chmod 600 /.variables.sh && \
 echo "source /.variables.sh" >> ~/.bashrc && source ~/.bashrc
 
 # Reboot from vm host. If there was a kernel update, reboot fails so start and stop as below.
-# sudo virsh shutdown $MANAGEMENT_SERVER_HOSTNAME && sudo virsh start $MANAGEMENT_SERVER_HOSTNAME
+# sudo virsh shutdown $MANAGEMENT_SERVER_HOSTNAME && sleep 10 && sudo virsh start $MANAGEMENT_SERVER_HOSTNAME
 
 sudo touch /etc/cloud/cloud-init.disabled
 
@@ -71,7 +71,7 @@ cd Virtual-HPC-Cluster
 ######################################
 # Create nessessary VMs
 ######################################
-ansible-playbook create-vm.yml -e "hostname=$LOGIN_SERVER_HOSTNAME" \
+ansible-playbook playbooks/create-vm.yml -e "hostname=$LOGIN_SERVER_HOSTNAME" \
 -e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
 -e "admin_user=$ADMIN_USER" \
 -e "mac=$LOGIN_SERVER_MAC" \
@@ -79,14 +79,14 @@ ansible-playbook create-vm.yml -e "hostname=$LOGIN_SERVER_HOSTNAME" \
 -e "ssh_public_key_org='$SSH_PUBLIC_KEY_ORG'" \
 -e "ip=$LOGIN_SERVER_IP"
 
-ansible-playbook create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
+ansible-playbook playbooks/create-vm.yml -e "hostname=$HEAD_SERVER_HOSTNAME" \
 -e "vm_host='$STORAGE_SERVER_HOSTNAME'" \
 -e "admin_user=$ADMIN_USER" -e "mac=$HEAD_SERVER_MAC" \
 -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
 -e "ssh_public_key_org='$SSH_PUBLIC_KEY_ORG'" \
 -e "ip=$HEAD_SERVER_IP"
 
-ansible-playbook create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
+ansible-playbook playbooks/create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
 -e "vm_host='$WORKER_SERVER_HOSTNAME'" \
 -e "admin_user=$ADMIN_USER" -e "mac=$WORKER_SERVER_MAC" \
 -e "ssh_public_key_personal='$SSH_PUBLIC_KEY_PERSONAL'" \
@@ -95,18 +95,18 @@ ansible-playbook create-vm.yml -e "hostname=$WORKER_SERVER_HOSTNAME" \
 
 # ansible all -m ping
 
-ansible-playbook keyscan.yml \
+ansible-playbook playbooks/keyscan.yml \
 -e "target=localhost"
 
 ######################################
 # Prepare the base OSes
 ######################################
-ansible-playbook prepare-base-os.yml -e "admin_user=$ADMIN_USER"
+ansible-playbook playbooks/prepare-base-os.yml -e "admin_user=$ADMIN_USER"
 
 ######################################
 # Prepare the Storage Server
 ######################################
-ansible-playbook prepare-storage-server.yml \
+ansible-playbook playbooks/prepare-storage-server.yml \
 -e "subnet=$SUBNET" \
 -e "lmod_version=$LMOD_VERSION" \
 -e "admin_user=$ADMIN_USER"
@@ -116,7 +116,7 @@ ansible-playbook prepare-storage-server.yml \
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-hpc-cluster.yml -o ~/prepare-hpc-cluster.yml
 
-ansible-playbook prepare-hpc-cluster.yml \
+ansible-playbook playbooks/prepare-hpc-cluster.yml \
 -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
 -e "admin_user=$ADMIN_USER"
 
@@ -125,17 +125,15 @@ ansible-playbook prepare-hpc-cluster.yml \
 ######################################
 curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/prepare-head.yml -o ~/prepare-head.yml
 
-ansible-playbook keyscan.yml \
+ansible-playbook playbooks/keyscan.yml \
 -e "target=$HEAD_SERVER_HOSTNAME"
 
-ansible-playbook prepare-head.yml
+ansible-playbook playbooks/prepare-head.yml
 
 ######################################
 # Reset a Server
 ######################################
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/reset.yml -o ~/reset.yml
-
-ansible-playbook reset.yml \
+ansible-playbook playbooks/reset.yml \
 -e "target_hostname=$STORAGE_SERVER_HOSTNAME" \
 -e "storage_server_hostname=$STORAGE_SERVER_HOSTNAME" \
 -e "subnet=$SUBNET" \
@@ -147,14 +145,14 @@ ansible-playbook reset.yml \
 ######################################
 # If deleting the whole cluster, reset the storage server first.
 
-ansible-playbook delete-vm.yml \
+ansible-playbook playbooks/delete-vm.yml \
 -e "vm_host=$STORAGE_SERVER_HOSTNAME" \
 -e "target_hostname=$LOGIN_SERVER_HOSTNAME"
 
-ansible-playbook delete-vm.yml \
+ansible-playbook playbooks/delete-vm.yml \
 -e "vm_host=$STORAGE_SERVER_HOSTNAME" \
 -e "target_hostname=$HEAD_SERVER_HOSTNAME"
 
-ansible-playbook delete-vm.yml \
+ansible-playbook playbooks/delete-vm.yml \
 -e "vm_host=$STORAGE_SERVER_HOSTNAME" \
 -e "target_hostname=$WORKER_SERVER_HOSTNAME"
