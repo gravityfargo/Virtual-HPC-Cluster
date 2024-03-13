@@ -1,5 +1,16 @@
-- name: Scan all hosts
-  hosts: "{{ target }}"
+---
+- name: Local key-scan
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Write ansible host's host key to known hosts
+      ansible.builtin.shell: "ssh-keyscan -H {{ item }} >> ~/.ssh/known_hosts"
+      loop: "{{ groups['all'] }}"
+      ignore_errors: true
+      
+- name: Remote key-scan
+  hosts: all
+  gather_facts: no
   tasks:
     - name: Write ansible host's host key to known hosts
       ansible.builtin.shell: "ssh-keyscan -H {{ item }} >> ~/.ssh/known_hosts"
