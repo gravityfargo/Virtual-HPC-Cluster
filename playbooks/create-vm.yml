@@ -30,14 +30,14 @@
           #cloud-config
 
           users:
-            - name: {{ admin_user }}
-              sudo: ALL=(ALL) NOPASSWD:ALL
+            - name: $ADMIN_USER
               shell: /bin/bash
-              groups: sudo
-              ssh_authorized_keys:
-                - {{ ssh_public_key_personal }}
-                - {{ ssh_public_key_org }}
               lock_passwd: false
+              groups: sudo
+              sudo: ALL=(ALL) NOPASSWD:ALL
+              ssh_authorized_keys:
+                - $SSH_PUBLIC_KEY_PERSONAL
+                - $SSH_PUBLIC_KEY_ORG
 
     - name: Create VM base image
       ansible.builtin.shell: qemu-img create -b {{ base_image_path }} -f qcow2 -F qcow2 {{ vm_storage_path }}/{{ hostname }}-base.img 40G
