@@ -20,9 +20,6 @@ sudo groupadd -r ansibleadmins && \
 sudo usermod -aG ansibleadmins $USER && \
 exec sudo su -l $USER
 
-sudo chown -R root:ansibleadmins /etc/ansible && \
-sudo chmod 774 /etc/ansible && \
-sudo chmod 664 /etc/ansible/hosts
 
 ######################################
 # Start here if using an existing ansible controller
@@ -42,7 +39,7 @@ EOF
 ######################################
 # Prepare Ansible
 ######################################
-tee /etc/ansible/hosts <<EOF
+sudo tee /etc/ansible/hosts <<EOF
 [management]
 $MANAGEMENT_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 
@@ -61,6 +58,11 @@ $WORKER_SERVER_HOSTNAME ansible_user=$ADMIN_USER
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
 EOF
+
+
+sudo chown -R root:ansibleadmins /etc/ansible && \
+sudo chmod 774 /etc/ansible && \
+sudo chmod 664 /etc/ansible/hosts
 
 
 cd && git clone https://github.com/gravityfargo/Virtual-HPC-Cluster.git && \
@@ -143,8 +145,16 @@ ansible-playbook reset.yml \
 ######################################
 # Delete a VM
 ######################################
-curl https://raw.githubusercontent.com/gravityfargo/Virtual-HPC-Cluster/main/playbooks/delete-vm.yml -o ~/delete-vm.yml
+# If deleting the whole cluster, reset the storage server first.
 
 ansible-playbook delete-vm.yml \
 -e "vm_host=$STORAGE_SERVER_HOSTNAME" \
--e "target_hostname=$MANAGEMENT_SERVER_HOSTNAME"
+-e "target_hostname=$LOGIN_SERVER_HOSTNAME"
+
+ansible-playbook delete-vm.yml \
+-e "vm_host=$STORAGE_SERVER_HOSTNAME" \
+-e "target_hostname=$HEAD_SERVER_HOSTNAME"
+
+ansible-playbook delete-vm.yml \
+-e "vm_host=$STORAGE_SERVER_HOSTNAME" \
+-e "target_hostname=$WORKER_SERVER_HOSTNAME"
